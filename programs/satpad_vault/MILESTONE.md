@@ -54,6 +54,16 @@
   wrong run index; draw within max + timestamp, above max, zero, 299 s refused / 300 s allowed, every other key and any
   other destination, stolen-key bound.
 
+- Task 6: `instructions/admin.rs` — `AdminConfig` (admin signer + mut Config): `set_split` (validate_split),
+  `set_wallets(Option×3)` (never admin, lp_wallet or recovery), `set_pause(bool)`; `AdminCoin`: `set_coin_pause(bool)`
+  (SPEC's single `set_pause` is two instructions, global and per-coin); `recover`: coin must be paused, moves the whole
+  CoinFee ATA to `ATA(RECOVERY_ADDRESS)` — a constant, so no account arg can redirect it; `SetLp`: signer must equal
+  `ProgramData.upgrade_authority_address` of this program (Squads vault on mainnet), caps via validate_lp_params.
+- Tests: `admin.test.ts` (15): split change + next settle uses it, bounds, non-admin; wallets partial update, default
+  pubkey, non-admin; global pause blocks/unblocks settle, per-coin pause isolates one coin, non-admin; recover requires
+  paused, only to recovery ATA (admin's own ATA and treasury refused), non-admin; set_lp by mock multisig (full and
+  partial), caps, admin and LP wallet refused, immutable program refused, forged ProgramData refused.
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -63,5 +73,5 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 6–9 (STATUS.md).
+- Tasks 7–9 (STATUS.md).
 - VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.

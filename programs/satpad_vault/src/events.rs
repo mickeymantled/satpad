@@ -75,3 +75,37 @@ pub struct LpDrawn {
     pub timestamp: i64,
     pub lp_pot_remaining: u64,
 }
+
+#[event]
+pub struct SplitChanged {
+    pub old: Split,
+    pub new: Split,
+}
+
+#[event]
+pub struct WalletsChanged {
+    pub treasury: Pubkey,
+    pub buyback_wallet: Pubkey,
+    pub rewards_wallet: Pubkey,
+}
+
+#[event]
+pub struct Paused {
+    /// `Pubkey::default()` for the global flag.
+    pub mint: Pubkey,
+    pub paused: bool,
+}
+
+#[event]
+pub struct Recovered {
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub destination: Pubkey,
+}
+
+#[event]
+pub struct LpParamsSet {
+    pub lp_wallet: Pubkey,
+    pub lp_draw_max: u64,
+    pub lp_draw_interval: i64,
+}

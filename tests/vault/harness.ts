@@ -113,6 +113,22 @@ export class VaultSvm {
     return unpackAccount(pk, { data, owner: TOKEN_PROGRAM_ID, executable: false, lamports: 0 } as never, TOKEN_PROGRAM_ID);
   }
 
+  /** Installs `authority` as the program's upgrade authority by patching the ProgramData header LiteSVM created. */
+  setUpgradeAuthority(authority: PublicKey | null): void {
+    const loader = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+    const [pd] = PublicKey.findProgramAddressSync([SATPAD_VAULT_PROGRAM_ID.toBuffer()], loader);
+    const data = Buffer.from(this.accountData(pd)!);
+    // UpgradeableLoaderState::ProgramData { slot: u64, upgrade_authority_address: Option<Pubkey> } after a u32 tag (=3)
+    if (data.readUInt32LE(0) !== 3) throw new Error("not a ProgramData account");
+    data.writeUInt8(authority ? 1 : 0, 12);
+    (authority ?? PublicKey.default).toBuffer().copy(data, 13);
+    this.setAccount(pd, loader, data, this.lamportsOf(pd));
+  }
+
+  programDataAddress(): PublicKey {
+    return PublicKey.findProgramAddressSync([SATPAD_VAULT_PROGRAM_ID.toBuffer()], new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"))[0];
+  }
+
   /** Current unix timestamp on the SVM clock. */
   now(): bigint {
     return this.svm.getClock().unixTimestamp;

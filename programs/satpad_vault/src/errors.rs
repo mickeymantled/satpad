@@ -60,4 +60,12 @@ pub enum VaultError {
     LpDrawTooSoon,
     #[msg("amount must be greater than zero")]
     ZeroAmount,
+    #[msg("signer is not the program's upgrade authority")]
+    NotUpgradeAuthority,
+    #[msg("recover requires the coin to be paused")]
+    CoinNotPaused,
+    #[msg("recovery destination must be the ATA of the fixed RECOVERY_ADDRESS")]
+    WrongRecoveryDestination,
+    #[msg("wallet must not be the default pubkey")]
+    InvalidWallet,
 }

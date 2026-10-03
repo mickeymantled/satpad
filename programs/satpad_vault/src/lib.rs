@@ -61,4 +61,38 @@ pub mod satpad_vault {
     pub fn draw_lp<'info>(ctx: Context<'info, DrawLp<'info>>, amount: u64) -> Result<()> {
         instructions::lp::handle_draw_lp(ctx, amount)
     }
+
+    // ---- admin (hot key, bounded) ----
+
+    /// Changes the split within the program bounds. Applies to every later `settle`.
+    pub fn set_split(ctx: Context<AdminConfig>, split: Split) -> Result<()> {
+        instructions::admin::handle_set_split(ctx, split)
+    }
+
+    /// Changes treasury, buyback and rewards wallets. Never the recovery address (a constant) or the LP wallet.
+    pub fn set_wallets(ctx: Context<AdminConfig>, treasury: Option<Pubkey>, buyback_wallet: Option<Pubkey>, rewards_wallet: Option<Pubkey>) -> Result<()> {
+        instructions::admin::handle_set_wallets(ctx, treasury, buyback_wallet, rewards_wallet)
+    }
+
+    /// Pauses or unpauses every coin's `settle`.
+    pub fn set_pause(ctx: Context<AdminConfig>, paused: bool) -> Result<()> {
+        instructions::admin::handle_set_pause(ctx, paused)
+    }
+
+    /// Pauses or unpauses one coin's `settle`.
+    pub fn set_coin_pause(ctx: Context<AdminCoin>, paused: bool) -> Result<()> {
+        instructions::admin::handle_set_coin_pause(ctx, paused)
+    }
+
+    /// Only while a coin is paused: moves its `CoinFee` balance to the fixed `RECOVERY_ADDRESS`.
+    pub fn recover<'info>(ctx: Context<'info, Recover<'info>>) -> Result<()> {
+        instructions::admin::handle_recover(ctx)
+    }
+
+    // ---- upgrade authority (Squads multisig on mainnet) ----
+
+    /// Sets the LP wallet and draw limits within the program caps.
+    pub fn set_lp(ctx: Context<SetLp>, lp_wallet: Option<Pubkey>, lp_draw_max: Option<u64>, lp_draw_interval: Option<i64>) -> Result<()> {
+        instructions::admin::handle_set_lp(ctx, lp_wallet, lp_draw_max, lp_draw_interval)
+    }
 }
