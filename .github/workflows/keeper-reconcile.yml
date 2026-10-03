@@ -45,12 +45,9 @@ jobs:
           if_no_artifact_found: warn
         continue-on-error: true
       - name: Build vault if no artifact
+        # cargo-build-sbf (from the Solana install) brings its own toolchain; no Anchor CLI needed — the SDK ships the IDL.
         if: hashFiles('target/deploy/satpad_vault.so') == ''
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0
-          source "$HOME/.cargo/env"
-          cargo install --git https://github.com/coral-xyz/anchor --tag v1.2.0 anchor-cli --locked
-          scripts/build-vault.sh
+        run: cargo build-sbf --tools-version v1.57 --arch v2 --manifest-path programs/satpad_vault/Cargo.toml
       - name: Boot fork, seed, trade, keeper, reconcile
         run: |
           mkdir -p target/deploy && cp keys/satpad_vault-dev.json target/deploy/satpad_vault-keypair.json 2>/dev/null || true
