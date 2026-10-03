@@ -35,6 +35,8 @@ Two mechanisms, both admin-only:
 
 wBTC mint facts (live): program = SPL Token (not 2022), decimals 8, supply 245,065,835,304 base (≈2450.66 BTC), mint authority `BCD75RNBHrJJpW4dXVagL5mPjzRLnVZq4YirJdjEYMV7`, no freeze authority. Wrapper identified as Wormhole/Portal via Jupiter token metadata (`lite-api.jup.ag/tokens/v2/search`); mint authority not independently matched to the Wormhole bridge — low-risk but note it.
 
+**Issuer risk (human note, 2026-10-02):** this is Wormhole Portal wBTC bridged from Ethereum WBTC. The spec's hard dependency "the BTC wrapper's issuer stays solvent and redeemable" therefore means **BitGo (WBTC custodian) plus the Wormhole bridge**, not Coinbase. **Pinned as `BTC_QUOTE_MINT` by human approval (DECISIONS D2).**
+
 Existing usage: 3,406 mainnet bonding curves have `quote_mint = 3NZ9JM…` (getProgramAccounts, BondingCurve disc `[23,183,248,55,96,216,172,96]`, `quote_mint` at byte offset 83). Example: curve `BMzScNR7aRbpsZGfCegqUAvaCEzLjAFu7biBr1wWiMzL`, mint `6wF2bzWJVDah6MraZpCyU2oF7QkL91e3TyjipjExpump`, create tx `m2dFuatnvAck4kajtXsoPvb3gQssEwUvbiDcrSzNXFoWYNPfbtaKgrJXAsiPP61QSWMPJhk1Q9LwcutZpvCpiV3` (2026-09-26).
 
 ### V2: fees

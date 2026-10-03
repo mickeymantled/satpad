@@ -149,14 +149,14 @@ Atomic: all land or none. A coin created without step 3 and 4 is not registered 
 
 ## Fee split
 
-Every trade pays a creator fee in BTC, set at the maximum pump.fun allows for custom pairs, and the vault splits it four ways. The table assumes a 2.00% creator fee; if pump.fun caps Custom Pairs creator fees at 1.00% (reported range 0.05% to 1%), keep the same basis-point split of the fee and halve the per-trade percentages shown to users.
+Every trade pays a creator fee in BTC, set at the maximum pump.fun allows for custom pairs, and the vault splits it four ways. The table assumes a 1.00% creator fee (`creator_fee_bps = 100`, DECISIONS D3, 2026-10-02): pump.fun's program accepts up to 300 bps but its published Custom Pairs range is 0.05% to 1%. The vault's `Config.creator_fee_bps` is capped at 100 by a program constant.
 
-| Share | Of creator fee | Of trade at 2% fee | Destination |
+| Share | Of creator fee | Of trade at 1% fee | Destination |
 | --- | --- | --- | --- |
-| Liquidity (Reserve) | 2500 bps | 0.50% | `LpPot`, then $SATPAD/BTC pool, LP burned |
-| Buyback | 2500 bps | 0.50% | Keeper buys $SATPAD on the pool and burns it |
-| Operator | 1000 bps | 0.20% | Treasury. Pays keeper, RPC, indexer, team |
-| Deployer's choice | 4000 bps | 0.80% | Deployer wallet, another wallet, or holders |
+| Liquidity (Reserve) | 2500 bps | 0.25% | `LpPot`, then $SATPAD/BTC pool, LP burned |
+| Buyback | 2500 bps | 0.25% | Keeper buys $SATPAD on the pool and burns it |
+| Operator | 1000 bps | 0.10% | Treasury. Pays keeper, RPC, indexer, team |
+| Deployer's choice | 4000 bps | 0.40% | Deployer wallet, another wallet, or holders |
 
 Bounds: liquidity never below 2500 bps, operator never above 2000 bps, no floor on the deployer's share. `set_split` refuses anything outside these.
 

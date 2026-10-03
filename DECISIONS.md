@@ -12,12 +12,12 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D2 — 2026-10-02 — M1 — BTC quote mint pinned to Wormhole wBTC `3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh` (8 decimals)
 **Decision:** `BTC_QUOTE_MINT = 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh`, `BTC_QUOTE_DECIMALS = 8`.
 **Reason:** It is the only BTC mint in pump's QuoteControl on mainnet (VERIFIED V1). Spec hard-dependency "the BTC wrapper's issuer stays solvent" therefore means Wormhole/Portal, not Coinbase cbBTC or Zeus zBTC.
-**Status:** proposed — CLAUDE.md requires explicit human sign-off to pin. The fork script already uses it for testing; nothing ships to mainnet with it until approved.
+**Status:** approved by human 2026-10-02. Issuer risk = BitGo + Wormhole (see VERIFIED V1).
 
 ## D3 — 2026-10-02 — M1 — Creator fee default 100 bps; on-chain cap is 300 bps
 **Decision:** Pass `creator_fee_bps = 100` (1.00%) to `create_v2`. Spec table assumes 2.00% and says "maximum pump.fun allows." The on-chain maximum is 300 bps (VERIFIED V2), but pump.fun's FAQ and create form market 0.05%–1%, and the docs say creator-fee changes on custom pairs go through pump's CTO team.
 **Reason:** 300 bps is technically accepted by the program but is 3× the published ceiling; a coin advertised above the public range risks pump.fun intervention or a UI mismatch on pump.fun's own site. 100 bps is the top of the published range. Per-trade percentages shown to users are the spec's "halve the per-trade percentages" case: Liquidity 0.25%, Buyback 0.25%, Operator 0.10%, Deployer 0.40% of trade. Bps split of the fee is unchanged.
-**Status:** proposed — human to choose 100 vs 300 (or other). Constant lives in one place: `packages/sdk/src/quoteMints.ts`.
+**Status:** approved by human 2026-10-02 at **100 bps**, with two additions: (a) `creator_fee_bps` becomes a `Config` field in `satpad_vault` with a program-enforced ceiling `MAX_CREATOR_FEE_BPS = 100` (a constant, so raising it needs an upgrade through the Squads multisig); (b) SPEC.md's fee table updated by human direction to the halved per-trade numbers — Liquidity 0.25%, Buyback 0.25%, Operator 0.10%, Deployer 0.40% — bps split of the fee unchanged. SDK default lives in `packages/sdk/src/quoteMints.ts` and must equal the program constant (test asserts it).
 
 ## D4 — 2026-10-02 — M1 — `create_v2` does not need a CPI from `satpad_vault`
 **Decision:** The launch transaction calls `create_v2` directly from the user's wallet with `creator = CoinFee PDA` as a plain argument; `declare_coin` runs after it in the same transaction and verifies `bonding_curve.creator == CoinFee`. No CPI from the vault into pump.
@@ -27,7 +27,7 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D5 — 2026-10-02 — M1 — Toolchain versions differ from spec text
 **Decision:** Anchor CLI 1.2.0 (spec: "0.30+"), Rust 1.99.0, Solana/Agave 4.3.0, pump-sdk 2.0.0 + pump-swap-sdk 1.20.0 which depend on `@solana/web3.js` v1 and `@coral-xyz/anchor` 0.31 (spec: `@solana/kit` for RPC). SDK package uses web3.js v1 to match pump's SDKs; `@solana/kit` deferred — adopt only if a later milestone needs it, to avoid a dual RPC stack.
 **Reason:** Latest stable at install time; pump SDKs dictate web3.js v1.
-**Status:** proposed.
+**Status:** approved by human 2026-10-02. **SPEC.md's "Anchor 0.30+" and "`@solana/kit` for RPC" lines are superseded: Anchor 1.2.0 and `@solana/web3.js` v1 everywhere.**
 
 ## D6 — 2026-10-02 — M1 — Root tooling added for the fork smoke test before the full monorepo scaffold
 **Decision:** Root `package.json` (private, pnpm 11.3.0, CJS — `@coral-xyz/anchor` fails to import its `BN` under ESM via tsx), `tsconfig.json` strict, `pnpm-workspace.yaml`, and `scripts/fork-*.ts`. Task 1 of the M1 plan (full workspace scaffold) will build on these rather than replace them.
