@@ -3,7 +3,25 @@
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",
-  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --passWithNoTests" },
-  "dependencies": { "@satpad/sdk": "workspace:*" },
-  "devDependencies": { "typescript": "^5.6.0", "vitest": "^3.0.0" }
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@satpad/db": "workspace:*",
+    "@satpad/sdk": "workspace:*",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "@pump-fun/pump-sdk": "2.0.0",
+    "pg": "^8.16.0",
+    "drizzle-orm": "^0.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
 }
