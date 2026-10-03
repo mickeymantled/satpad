@@ -19,7 +19,7 @@ describe("config", () => {
     expect(() => loadConfig({ ...base, SOLANA_RPC_URL: "" })).toThrow(/SOLANA_RPC_URL/);
     expect(() => loadConfig({ ...base, SETTLE_DUST_THRESHOLD: "1.5" })).toThrow(/base-unit integer/);
     expect(() => loadConfig({ ...base, MAX_SEND_ATTEMPTS: "6" })).toThrow(/1..5/);
-    expect(() => loadConfig({ ...base, PRIORITY_FEE_MODE: "guess" })).toThrow(/helius\|fixed/);
+    expect(() => loadConfig({ ...base, PRIORITY_FEE_MODE: "guess" })).toThrow(/live\|fixed/);
   });
   it("describeConfig redacts the API key and DB password", () => {
     const d = JSON.stringify(describeConfig(loadConfig(base)), (_k, v) => (typeof v === "bigint" ? v.toString() : v));

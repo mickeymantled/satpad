@@ -13,9 +13,12 @@ export interface KeeperConfig {
   settleDustThreshold: bigint;
   /** Loop intervals, ms. */
   settleIntervalMs: number;
-  /** Priority fee: "helius" uses the RPC's getPriorityFeeEstimate; "fixed" uses fixedPriorityFeeMicroLamports. */
-  priorityFeeMode: "helius" | "fixed";
+  /** "live": Helius getPriorityFeeEstimate → getRecentPrioritizationFees → min; "fixed": fixedPriorityFeeMicroLamports (fork/tests). */
+  priorityFeeMode: "live" | "fixed";
   fixedPriorityFeeMicroLamports: bigint;
+  /** Clamp for live estimates, micro-lamports per CU. */
+  priorityFeeMinMicroLamports: bigint;
+  priorityFeeMaxMicroLamports: bigint;
   computeUnitLimit: number;
   maxSendAttempts: number;
   healthPort: number;
@@ -45,7 +48,7 @@ const big = (env: NodeJS.ProcessEnv, k: string, d: bigint): bigint => {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): KeeperConfig {
   const mode = env["PRIORITY_FEE_MODE"] ?? "fixed";
-  if (mode !== "helius" && mode !== "fixed") throw new Error(`PRIORITY_FEE_MODE must be helius|fixed, got ${mode}`);
+  if (mode !== "live" && mode !== "fixed") throw new Error(`PRIORITY_FEE_MODE must be live|fixed, got ${mode}`);
   const attempts = int(env, "MAX_SEND_ATTEMPTS", 5);
   if (attempts < 1 || attempts > 5) throw new Error("MAX_SEND_ATTEMPTS must be 1..5 (SPEC: max 5 attempts)");
   const cfg: KeeperConfig = {
@@ -57,6 +60,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KeeperConfig {
     settleIntervalMs: int(env, "SETTLE_INTERVAL_MS", 60_000),
     priorityFeeMode: mode,
     fixedPriorityFeeMicroLamports: big(env, "FIXED_PRIORITY_FEE_MICRO_LAMPORTS", 1_000n),
+    priorityFeeMinMicroLamports: big(env, "PRIORITY_FEE_MIN_MICRO_LAMPORTS", 1_000n),
+    priorityFeeMaxMicroLamports: big(env, "PRIORITY_FEE_MAX_MICRO_LAMPORTS", 2_000_000n),
     computeUnitLimit: int(env, "COMPUTE_UNIT_LIMIT", 400_000),
     maxSendAttempts: attempts,
     healthPort: int(env, "HEALTH_PORT", 8080),
