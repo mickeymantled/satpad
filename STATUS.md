@@ -1,27 +1,17 @@
 # Status
 
-**Current milestone:** 1 — Repo and SDK
-**Last completed step:** Task 5 — `pump.ts`: `buildCreateV2`, `buildBuyV2`, `buildSellV2`, `buildCollectCreatorFeeV2`, `coinAccounts`, curve-math wrappers, pinned buyback recipients; 7 tests assert every account list/flag against `idl-ref/pump.json` and the buyback list against the SDK source. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored).
-**Next step:** Task 6 — `scripts/fork-create-and-buy.ts` (M1 DoD script via @satpad/sdk).
-**Blockers:** none.
-
-## Milestone 1 definition of done (per DECISIONS D1)
-A coin created on the local mainnet fork (`scripts/local-fork.sh`) with `quote_mint = BTC_QUOTE_MINT`, bought once with `buy_v2`, by a script in the repo.
-Current evidence: `scripts/fork-smoke.ts` already does this against the raw pump-sdk. M1 closes when the same flow runs through `packages/sdk` wrappers (plan tasks 5–7).
+**Current milestone:** 2 — Vault program (awaiting human review of M1 close before planning)
+**Last completed step:** Milestone 1 closed. Definition of done met on the local mainnet fork via `pnpm fork:m1`; evidence in `packages/sdk/MILESTONE.md`. 26 sdk tests, typecheck and lint green.
+**Next step:** Human runs the review gate for M1 (WORKFLOW.md). Then: plan M2 — `programs/satpad_vault` Anchor 1.2 program with all instructions, bounds, events; bankrun tests; verifiable build. Re-check VERIFIED V12 (devnet Custom Pairs) at M2 close.
+**Blockers:** none. Note for M2 planning: M2's spec DoD says "a devnet coin's creator fee settles four ways" — read as local fork per D1.
 
 ## Toolchain (installed 2026-10-02)
 Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`; Rust 1.99.0 + Anchor CLI 1.2.0 via rustup/avm (`source ~/.cargo/env`); Node 22.22.3; pnpm 11.3.0.
 
-## Plan (milestone 1, human said "go" 2026-10-02)
-1. Monorepo scaffold on top of the existing root `package.json`: pnpm workspaces (`packages/*`, `keeper`, `indexer`, `api`, `web`, `scripts`), TS strict, vitest, eslint, `.env.example`, directory skeleton per SPEC layout, `pnpm test` at root
-2. `packages/sdk`: `quoteMints.ts` with `BTC_QUOTE_MINT`, `BTC_QUOTE_DECIMALS = 8`, `DEFAULT_CREATOR_FEE_BPS = 100`, `MAX_CREATOR_FEE_BPS = 100` (must match program constant) — D2/D3 approved
-3. `packages/sdk`: `satpad_vault` program id placeholder + PDA derivations (`config`, `coin_fee`, `coin`, `payee_pot`, `rewards_pot`, `lp_pot`, `rewards_run`) with vitest tests
-4. `packages/sdk`: Config / Coin TypeScript types and bigint amount helpers (base units ↔ sats ↔ ui string, 8 decimals) with tests
-5. `packages/sdk`: pump.fun v2 wrappers — `buildCreateV2`, `buildBuyV2`, `buildSellV2`, `buildCollectCreatorFeeV2` pinned to the quote mint, wrapping `@pump-fun/pump-sdk` 2.0.0; tests assert account lists against `idl-ref/pump.json`
-6. `scripts/fork-create-and-buy.ts` with `--dry-run`: M1 DoD script using the `packages/sdk` wrappers against the local fork (supersedes `fork-smoke.ts`, which stays as the raw-SDK reference)
-7. Run it, record signatures in `packages/sdk/MILESTONE.md` as DoD evidence
+## Milestone 1 — closed 2026-10-02
+DoD (DECISIONS D1): coin created on the local mainnet fork with `quote_mint = BTC_QUOTE_MINT`, bought once with `buy_v2`, by a script. **Met** — see `packages/sdk/MILESTONE.md` for signatures and the 7 on-chain checks.
 
-## Done
+### Commits
 - Kickoff files — `9f4af84`
 - Research checkpoint — `d8d9ef7`
 - VERIFIED V1–V4, V12 + IDLs — `cb9ba49`
@@ -32,4 +22,17 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - Task 3: pda.ts — `e27b4e0`
 - Task 4: amounts.ts + types.ts — `db6630c`
 - Task 5: pump.ts — `22783d1`
-- Task 6: scripts/fork-create-and-buy.ts — (this commit)
+- Task 6: scripts/fork-create-and-buy.ts — `68d49b6`
+- Task 7: MILESTONE.md evidence, close M1 — (this commit)
+
+### DECISIONS this milestone
+D1 local fork target (approved) · D2 pin wBTC (approved) · D3 100 bps + program cap (approved) · D4 no CPI for create_v2 (in effect) · D5 Anchor 1.2 / web3.js v1 (approved) · D6 root tooling (in effect)
+
+### Tests added
+`packages/sdk/test/{quoteMints,pda,amounts,pump}.test.ts` — 26 tests. Plus two fork scripts that assert on-chain state (`fork-smoke.ts` raw SDK, `fork-create-and-buy.ts` via @satpad/sdk).
+
+### Deferred
+See `packages/sdk/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V11.
+
+## Milestone 2 plan
+(to be written after M1 review)
