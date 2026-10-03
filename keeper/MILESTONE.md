@@ -39,6 +39,10 @@
   confirmed first attempt; ledger amounts carry the split (e.g. fee 2350 → liquidity 588, buyback 587, operator 235,
   deployer 940).
 
+- Task 7: `scripts/fork-keeper-check.ts` (`pnpm fork:check [--since-slot N] [--json out]`): both-direction reconciliation
+  of `ledger` against vault events, lag stats, exit 1 on drift. CI: `.github/workflows/keeper-reconcile.yml` boots the
+  fork on an ubuntu runner with a Postgres service, seeds 3 coins, trades, runs the keeper twice, reconciles.
+
 ## How to run
 ```bash
 docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine

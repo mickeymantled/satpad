@@ -27,10 +27,13 @@
     "db:generate": "pnpm --filter @satpad/db generate",
     "fork:seed": "tsx scripts/fork-seed-coins.ts",
     "fork:trade": "tsx scripts/fork-trader.ts",
-    "keeper": "pnpm --filter @satpad/keeper start"
+    "keeper": "pnpm --filter @satpad/keeper start",
+    "fork:check": "tsx scripts/fork-keeper-check.ts"
   },
   "dependencies": {
-    "@satpad/sdk": "workspace:*"
+    "@satpad/sdk": "workspace:*",
+    "@satpad/db": "workspace:*",
+    "drizzle-orm": "^0.45.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

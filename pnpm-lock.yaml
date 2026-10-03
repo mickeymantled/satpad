@@ -8,9 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@satpad/db':
+        specifier: workspace:*
+        version: link:packages/db
       '@satpad/sdk':
         specifier: workspace:*
         version: link:packages/sdk
+      drizzle-orm:
+        specifier: ^0.45.0
+        version: 0.45.3(@types/pg@8.23.1)(pg@8.23.1)
     devDependencies:
       '@coral-xyz/anchor':
         specifier: ^0.32.1
