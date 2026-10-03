@@ -6,10 +6,12 @@
 - `src/pda.ts`: `configPda`, `coinFeePda`, `coinPda`, `payeePotPda`, `rewardsPotPda`, `lpPotPda`, `rewardsRunPda(mint, u64)`, `coinFeeAta`. `rewards_run` index encoded u64 LE (spec left it unspecified; program must match).
 - `src/amounts.ts`: bigint-only money — `Sats` brand, `parseBtc`/`parseSats`/`toUi`/`splitBtc`, `applyBps`, `splitFee` (deployer share absorbs floor remainder so parts sum exactly; program mirrors this), `assertValidSplit` (liquidity ≥ 2500, operator ≤ 2000, sum 10000).
 - `src/types.ts`: `Config`, `Coin`, `RewardsRun`, `PayeeMode`, `Stage` as the M2 IDL will shape them. `Config.creatorFeeBps` added per D3.
+- `src/pump.ts`: pump.fun v2 builders pinned to wBTC — `buildCreateV2` (mayhem/holder-reward/cashback off, fee bps 1..=100), `buildBuyV2` (+ idempotent Token-2022 ATA), `buildSellV2`, `buildCollectCreatorFeeV2` (permissionless), `coinAccounts`, `quoteTokensForSats`/`quoteSatsForTokens`/`quoteSatsForSell`, `PUMP_BUYBACK_FEE_RECIPIENTS` (pinned; SDK picks at random and does not export the list), `defaultFeeRecipients`.
 
 ## How to run
 - `pnpm --filter @satpad/sdk test`
 - `pnpm --filter @satpad/sdk typecheck`
 
 ## Deferred
-- STATUS.md tasks 5–7.
+- STATUS.md tasks 6–7.
+- `buy_exact_quote_in_v2` wrapper (spend-exact-sats buys) — add when the web buy panel needs it (M5).

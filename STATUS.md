@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 1 — Repo and SDK
-**Last completed step:** Task 4 — `amounts.ts` (branded `Sats`, `parseBtc`/`toUi` exact at 8 decimals, `applyBps`, `splitFee` with remainder to deployer, `assertValidSplit` with spec bounds) + `types.ts` (Config, Coin, RewardsRun, PayeeMode, Stage); 9 tests. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored).
-**Next step:** Task 5 — pump.fun v2 wrappers in `packages/sdk/src/pump.ts`.
+**Last completed step:** Task 5 — `pump.ts`: `buildCreateV2`, `buildBuyV2`, `buildSellV2`, `buildCollectCreatorFeeV2`, `coinAccounts`, curve-math wrappers, pinned buyback recipients; 7 tests assert every account list/flag against `idl-ref/pump.json` and the buyback list against the SDK source. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored).
+**Next step:** Task 6 — `scripts/fork-create-and-buy.ts` (M1 DoD script via @satpad/sdk).
 **Blockers:** none.
 
 ## Milestone 1 definition of done (per DECISIONS D1)
@@ -30,4 +30,5 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - Task 1: workspace scaffold — `8e8c361`
 - Task 2: quoteMints.ts — `a83c967`
 - Task 3: pda.ts — `e27b4e0`
-- Task 4: amounts.ts + types.ts — (this commit)
+- Task 4: amounts.ts + types.ts — `db6630c`
+- Task 5: pump.ts — (this commit)
