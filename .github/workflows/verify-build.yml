@@ -1,0 +1,75 @@
+# Reproducible (Docker) build of satpad_vault on an amd64 runner — DECISIONS D13. On every push to main it runs
+# solana-verify with the pinned base image, uploads the .so + hash as an artifact, and writes the hash into
+# programs/satpad_vault/MILESTONE.md in a [skip ci] commit so the repo always carries CI's hash next to the local one.
+name: verify-build
+on:
+  push:
+    branches: [main]
+    paths: ["programs/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "Anchor.toml", ".github/workflows/verify-build.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: { group: verify-build, cancel-in-progress: false }
+env:
+  # Must match the local toolchain for hashes to agree (DECISIONS D15): image 4.1.0 = cargo-build-sbf 4.1.0; platform-tools pinned v1.57.
+  BASE_IMAGE: solanafoundation/solana-verifiable-build:4.1.0
+  PLATFORM_TOOLS: v1.57
+  SBPF_ARCH: v2   # DECISIONS D11: v3 builds of this program are broken; v2 is the deployable arch
+  SOLANA_VERIFY_VERSION: 0.5.2
+jobs:
+  verify:
+    runs-on: ubuntu-latest   # amd64; the images have no arm64 manifest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Cache solana-verify
+        id: cache-sv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/solana-verify
+          key: solana-verify-${{ env.SOLANA_VERIFY_VERSION }}-${{ runner.os }}
+      - name: Install solana-verify
+        if: steps.cache-sv.outputs.cache-hit != 'true'
+        run: cargo install solana-verify --version ${{ env.SOLANA_VERIFY_VERSION }} --locked
+      - name: Reproducible build (Docker, amd64)
+        run: |
+          solana-verify build --library-name satpad_vault --base-image "$BASE_IMAGE" --arch "$SBPF_ARCH" -- --tools-version "$PLATFORM_TOOLS" .
+          ls -la target/deploy/satpad_vault.so
+      - name: Hash
+        id: hash
+        run: |
+          HASH=$(solana-verify get-executable-hash target/deploy/satpad_vault.so)
+          SHA=$(sha256sum target/deploy/satpad_vault.so | cut -d' ' -f1)
+          EFLAGS=$(python3 -c "import struct;d=open('target/deploy/satpad_vault.so','rb').read();print(struct.unpack('<I',d[48:52])[0])")
+          echo "executable_hash=$HASH" >> "$GITHUB_OUTPUT"; echo "sha256=$SHA" >> "$GITHUB_OUTPUT"; echo "eflags=$EFLAGS" >> "$GITHUB_OUTPUT"
+          { echo "commit=${GITHUB_SHA}"; echo "base_image=$BASE_IMAGE"; echo "arch=v$EFLAGS"; echo "executable_hash=$HASH"; echo "sha256=$SHA"; } > target/deploy/satpad_vault.hash.txt
+          cat target/deploy/satpad_vault.hash.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: satpad_vault-${{ github.sha }}
+          path: |
+            target/deploy/satpad_vault.so
+            target/deploy/satpad_vault.hash.txt
+          if-no-files-found: error
+      - name: Record hash in MILESTONE.md
+        run: |
+          python3 - <<'PY'
+          import os, re
+          p = "programs/satpad_vault/MILESTONE.md"; s = open(p).read()
+          line = f"| CI Docker-reproducible (`{os.environ['BASE_IMAGE']}`, SBPF v{os.environ['EFLAGS']}, commit `{os.environ['GITHUB_SHA'][:7]}`) | `{os.environ['SHA']}` | executable hash `{os.environ['EXEC']}` — authoritative once it matches a local build |"
+          marker = "<!-- ci-hash -->"
+          if marker in s:
+              s = re.sub(r"<!-- ci-hash -->.*", marker + " " + line, s)
+          else:
+              s = s.replace("## Definition-of-done evidence", marker + " " + line + "\n\n## Definition-of-done evidence", 1)
+          open(p, "w").write(s)
+          PY
+        env:
+          SHA: ${{ steps.hash.outputs.sha256 }}
+          EXEC: ${{ steps.hash.outputs.executable_hash }}
+          EFLAGS: ${{ steps.hash.outputs.eflags }}
+      - name: Commit hash
+        run: |
+          git config user.name "satpad-ci"; git config user.email "ci@users.noreply.github.com"
+          git add programs/satpad_vault/MILESTONE.md
+          git diff --cached --quiet || { git commit -m "ci: record verifiable build hash for ${GITHUB_SHA::7} [skip ci]"; git push; }

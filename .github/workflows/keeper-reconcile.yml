@@ -1,0 +1,61 @@
+# Ledger-vs-chain reconciliation on every push (human addition to the M3 plan): boot the mainnet fork on the runner,
+# seed coins, trade, run the keeper once against a Postgres service, then fail the build on any ledger drift.
+name: keeper-reconcile
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency: { group: keeper-reconcile-${{ github.ref }}, cancel-in-progress: true }
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: satpad, POSTGRES_PASSWORD: satpad, POSTGRES_DB: satpad }
+        ports: ["55433:5432"]
+        options: --health-cmd "pg_isready -U satpad" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://satpad:satpad@127.0.0.1:55433/satpad
+      SOLANA_RPC_URL: http://127.0.0.1:8899
+      FORK_RPC_URL: https://api.mainnet-beta.solana.com
+      PRIORITY_FEE_MODE: fixed
+      SOLANA_VERSION: 4.1.2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.3.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Download vault build artifact
+        # The v2 .so from verify-build (same commit when available, else latest). Falls back to a local cargo build.
+        uses: dawidd6/action-download-artifact@v6
+        with: { workflow: verify-build.yml, name: satpad_vault-${{ github.sha }}, path: target/deploy, if_no_artifact_found: warn }
+        continue-on-error: true
+      - name: Build vault if no artifact
+        if: hashFiles('target/deploy/satpad_vault.so') == ''
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0
+          source "$HOME/.cargo/env"
+          cargo install --git https://github.com/coral-xyz/anchor --tag v1.2.0 anchor-cli --locked
+          scripts/build-vault.sh
+      - name: Boot fork, seed, trade, keeper, reconcile
+        run: |
+          mkdir -p target/deploy && cp keys/satpad_vault-dev.json target/deploy/satpad_vault-keypair.json 2>/dev/null || true
+          scripts/local-fork.sh --detach
+          pnpm db:migrate
+          pnpm fork:seed --coins 3
+          pnpm fork:trade --rate-ms 300 --duration-s 20
+          KEEPER_KEYPAIR="$PWD/scripts/fork-keys/keeper.json" pnpm --filter @satpad/keeper exec tsx src/main.ts --once
+          pnpm fork:trade --rate-ms 300 --duration-s 10
+          KEEPER_KEYPAIR="$PWD/scripts/fork-keys/keeper.json" pnpm --filter @satpad/keeper exec tsx src/main.ts --once
+          pnpm fork:check --json reconcile.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: reconcile-${{ github.sha }}, path: reconcile.json, if-no-files-found: ignore }
