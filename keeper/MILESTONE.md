@@ -19,6 +19,14 @@
   registry subset (payee, mode, paused, bonding curve, created_at, updated_slot) into `coins` with upsert-by-mint that
   leaves indexer-owned columns alone. Tests: decode/filter/sort with a mocked RPC; Postgres insert-then-update.
 
+- Task 4: `src/chain.ts` (`ChainReader` interface; `RpcChainReader` batches `getMultipleAccountsInfo`, decodes Config),
+  `src/loops/settle.ts` `settleTick(deps, config, coins)`: vault paused → idle; coin paused → skip; read pump
+  creator_vault ATA / CoinFee ATA / AMM vault ATA in one batch; collect when unclaimed ≥ dust; settle on the re-read
+  CoinFee balance with the four split amounts (or treasury-only) recorded in the ledger row; pay_payee only for
+  Wallet-mode, non-treasury coins whose payee already has a quote ATA; errors isolated per coin and summarised.
+  Tests (7): full pipeline + ledger amounts, dust vs waiting fees, missing payee ATA, Holders/treasury-only, pauses,
+  one failing coin, graduated AMM balance flagged.
+
 ## How to run
 ```bash
 docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine
