@@ -39,3 +39,10 @@ export const MAYHEM_PROGRAM_ID = new PublicKey("MAyhSmzXzV1pTf7LsNkrNwkWKTo4ougA
 /** pump.fun singleton PDAs (VERIFIED V1, V13). */
 export const PUMP_GLOBAL = new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf");
 export const PUMP_QUOTE_CONTROL = new PublicKey("6z6GDdfb2AjR9ZhJmAUQ5cipJCVxQvLJhB2H8mCwTFBP");
+
+/**
+ * pump.fun `Global.initial_real_token_reserves`: tokens the curve sells before it completes. Observed on every curve
+ * created on the fork (VERIFIED V13 smoke: `real_token_reserves = 793099000000000` right after create_v2) and the
+ * standard pump value (1e9 supply, 206.9M to the pool). Curve progress = 1 − real_token_reserves / this.
+ */
+export const INITIAL_REAL_TOKEN_RESERVES = 793_099_000_000_000n;

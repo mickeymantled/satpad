@@ -1,0 +1,17 @@
+import { connect } from "@satpad/db";
+import { buildApp } from "./app";
+import { Connection } from "@solana/web3.js";
+import { CachedPriceProvider, FixedPriceProvider, PythPriceProvider } from "./prices";
+
+async function main() {
+  const port = Number(process.env["API_PORT"] ?? 8083);
+  const { db } = connect(process.env["DATABASE_URL"]);
+  // PRICE_SOURCE=pyth reads the on-chain feed (V7); anything else is a fixed dev price for the fork.
+  const fixedCents = BigInt(process.env["BTC_USD_CENTS"] ?? "10000000"); // $100,000.00 default on the fork
+  const inner = process.env["PRICE_SOURCE"] === "pyth" ? new PythPriceProvider(new Connection(process.env["SOLANA_RPC_URL"] ?? "", "confirmed")) : new FixedPriceProvider(fixedCents);
+  const prices = new CachedPriceProvider(inner, Number(process.env["PRICE_CACHE_MS"] ?? 30_000));
+  const app = await buildApp({ db, prices, rateLimitPerMinute: Number(process.env["RATE_LIMIT_PER_MINUTE"] ?? 120) });
+  await app.listen({ port, host: "0.0.0.0" });
+  process.stdout.write(JSON.stringify({ level: "info", msg: "api listening", port }) + "\n");
+}
+main().catch((e) => { console.error(e); process.exit(1); });
