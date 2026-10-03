@@ -38,7 +38,6 @@ async function main() {
   }
   if (buy) await save("buy_v2", buy);
   if (sell) await save("sell_v2", sell);
-  let settle: string | undefined, pay: string | undefined, collect: string | undefined;
   const findVault = async (re: RegExp) => {
     const sigs = await conn.getSignaturesForAddress(SATPAD_VAULT_PROGRAM_ID, { limit: 30 }, "confirmed");
     for (const s of sigs) {
@@ -48,14 +47,14 @@ async function main() {
     }
     return undefined;
   };
-  settle = await retry("settle", () => findVault(/Instruction: Settle/));
+  const settle = await retry("settle", () => findVault(/Instruction: Settle/));
   if (settle) await save("settle", settle);
-  pay = await retry("pay_payee", () => findVault(/Instruction: PayPayee/));
+  const pay = await retry("pay_payee", () => findVault(/Instruction: PayPayee/));
   if (pay) await save("pay_payee", pay);
   // a collect_creator_fee_v2 lands on the pump program; find it via the curve's creator vault? cheaper: scan recent pump sigs for the coin's CoinFee ATA
   const { coinAccounts, coinFeePda } = await import("@satpad/sdk");
   const cf = coinFeePda(new PublicKey(c0.mint))[0];
-  collect = await retry("collect", async () => {
+  const collect = await retry("collect", async () => {
     for (const m of mints) {
       const cf2 = coinFeePda(m)[0];
       const sigs = await conn.getSignaturesForAddress(coinAccounts(m, cf2).creatorQuoteAta, { limit: 5 }, "confirmed");
