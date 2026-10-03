@@ -11,5 +11,9 @@
   `@fastify/rate-limit` (default 120/min); 2 s cache headers. Tests (10): formatting, Pyth decode/guards/cache, every
   endpoint against a seeded Postgres incl. sorts, filters, pagination, 400/404, 429.
 
+- Task 7: `src/live.ts` `LiveHub` — one pg client `LISTEN satpad_live` (the processor's `pg_notify` on trades and
+  registrations), fan-out to every `WS /live` socket, hello frame on connect, slow sockets dropped above 1 MB
+  buffered; `/healthz` reports `liveClients`. Test: two real `ws` clients receive both notifications in order.
+
 ## Deferred
-- Task 7 `WS /live`; task 8 API-vs-chain check.
+- Task 8 API-vs-chain check.

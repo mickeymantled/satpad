@@ -6,9 +6,10 @@ import { Connection } from "@solana/web3.js";
 import type { Db } from "@satpad/db";
 import { btc, iso, tokens } from "./format";
 import type { PriceProvider } from "./prices";
+import { registerLive, type LiveHub } from "./live";
 import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, stats, type CoinSort, type Stage } from "./queries";
 
-export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number }
+export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub }
 const page = (q: Record<string, unknown>) => ({ limit: Math.min(100, Math.max(1, Number(q["limit"] ?? 25) || 25)), offset: Math.max(0, Number(q["offset"] ?? 0) || 0) });
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -16,7 +17,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(rateLimit, { max: deps.rateLimitPerMinute ?? 120, timeWindow: "1 minute" });
   app.addHook("onSend", async (_req, reply) => { reply.header("cache-control", "public, max-age=2"); });
 
-  app.get("/healthz", async () => ({ ok: true }));
+  if (deps.live) await registerLive(app, deps.live);
+  app.get("/healthz", async () => ({ ok: true, liveClients: deps.live?.clients ?? 0 }));
 
   app.get("/coins", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
