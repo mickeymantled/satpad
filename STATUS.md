@@ -1,8 +1,8 @@
 # Status
 
-**Current milestone:** 3 — Keeper, claim and settle loop (awaiting human review of M2 close before planning)
+**Current milestone:** 3 — Keeper, claim and settle loop (M2 approved by human 2026-10-02; M3 code BLOCKED on the V14 investigation, one session, then plan)
 **Last completed step:** Milestone 2 closed (provisionally, D13). Definition of done met on the local mainnet fork with the SBPF v2 build via `pnpm fork:m2`; evidence in `programs/satpad_vault/MILESTONE.md`. 66 program tests, 39 sdk tests, cargo tests, typecheck, lint green.
-**Next step:** Human runs the M2 review gate (WORKFLOW.md) and decides D13 (verifiable build on an amd64 host now vs M10). Then plan M3.
+**Next step:** (1) CI workflow for solana-verify on amd64 (D13 as revised); (2) V14 in order: mainnet acceptance of SBPF v2 → minimal repro on v2/v3 → upstream issue + pin toolchain → audit scope. Then M3 plan.
 **Blockers:** Verifiable build cannot run on this arm64 machine (D13). SBPF v3 build of the program is broken on both LiteSVM and Agave 4.3 — v2 is the only deployable build until the cause is found (D11 correction, V14).
 
 ## Toolchain (installed 2026-10-02)

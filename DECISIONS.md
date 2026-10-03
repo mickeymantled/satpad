@@ -62,12 +62,12 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 
 ## D12 — 2026-10-02 — M2 — `release_rewards` "pot above min" is a program constant `REWARDS_MIN_RELEASE = 1_000` sats
 **Decision:** SPEC lists "pot above min" as a `release_rewards` requirement but defines the $25 (Pyth) threshold only on the keeper side. The program cannot read USD, so it enforces a fixed dust guard of 1,000 base units (~$1 at $100k/BTC); the keeper applies the $25 rule before calling. Raising the constant is a program upgrade.
-**Status:** proposed (value); mechanism in effect.
+**Status:** approved by human 2026-10-02 (1,000 sats).
 
 ## D13 — 2026-10-02 — M2 — Verifiable build deferred to an amd64 host; local build hashes recorded
 **Finding:** `anchor build --verifiable` uses `quay.io/ottersec/anchor:v1.2.0`, which has no arm64 manifest; under `DOCKER_DEFAULT_PLATFORM=linux/amd64` the container never started on this Apple Silicon machine. `solana-verify` (installed, v0.5.2) needs the same kind of image.
 **Decision:** M2's "verifiable build hash recorded" is satisfied provisionally with the local deterministic build hash in `programs/satpad_vault/MILESTONE.md`; the Docker-reproducible hash is produced on an amd64 host (CI runner or Linux box) at M10, where SPEC places "Verified build published". Until then no mainnet deploy anyway.
-**Status:** proposed — human to accept the deferral or supply an amd64 host earlier.
+**Status:** rejected by human 2026-10-02 — do not defer. Instead: GitHub Actions workflow on push to `main` runs `solana-verify` on an ubuntu amd64 runner, uploads the hash as a build artifact and records it in MILESTONE.md. The local v2 hash is the fallback reference until CI's first green run.
 
 ## D14 — 2026-10-02 — M2 — Launch is a v0 transaction with a lookup table of launch-static accounts
 **Finding:** `create_v2` + `declare_coin` + `buy_v2` is ~1770 bytes legacy; the limit is 1232. SPEC anticipates this ("use an address lookup table").
