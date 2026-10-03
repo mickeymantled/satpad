@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { eq } from "drizzle-orm";
-import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, keeperHealth, ledger, type Db } from "../src";
+import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, fees, holders, keeperHealth, ledger, processedTx, trades, type Db } from "../src";
 import { runMigrations } from "../src/migrate";
 
 const BASE = process.env["DATABASE_URL"] ?? DEFAULT_LOCAL_DATABASE_URL;
@@ -64,6 +64,26 @@ describe("@satpad/db schema", async () => {
     const rows = await db.select().from(keeperHealth);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.consecutiveFailures).toBe(2);
+  });
+
+  it("M4 tables: trades keyed by (signature, ix), holders upsert, fees, processed_tx idempotency, numeric amounts as strings", async () => {
+    await db.insert(coins).values({ mint: "M4", deployer: "D", payee: "D", payeeMode: "wallet", bondingCurve: "BC", createdAt: new Date() }).onConflictDoNothing();
+    await db.insert(trades).values([
+      { signature: "s1", ixIndex: 0, mint: "M4", side: "buy", btcAmount: "123", tokenAmount: "1000000000", priceBtcScaled: "123000000000000", trader: "T", slot: 10n, venue: "curve" },
+      { signature: "s1", ixIndex: 1, mint: "M4", side: "sell", btcAmount: "45", tokenAmount: "500000000", priceBtcScaled: "90000000000000", trader: "T", slot: 10n, venue: "curve" },
+    ]);
+    await expect(db.insert(trades).values({ signature: "s1", ixIndex: 0, mint: "M4", side: "buy", btcAmount: "1", tokenAmount: "1", priceBtcScaled: "1", trader: "T", slot: 10n, venue: "curve" })).rejects.toThrow();
+    const big = (2n ** 64n - 1n).toString(); // u64 max; numeric(30,0) also fits products of two u64s
+    await db.insert(holders).values({ mint: "M4", wallet: "W", balance: big, updatedSlot: 10n }).onConflictDoUpdate({ target: [holders.mint, holders.wallet], set: { balance: "5", updatedSlot: 11n } });
+    await db.insert(holders).values({ mint: "M4", wallet: "W", balance: "7", updatedSlot: 12n }).onConflictDoUpdate({ target: [holders.mint, holders.wallet], set: { balance: "7", updatedSlot: 12n } });
+    const [h] = await db.select().from(holders);
+    expect(h!.balance).toBe("7");
+    expect(h!.updatedSlot).toBe(12n);
+    await db.insert(fees).values({ signature: "f1", mint: "M4", creatorFeeBtc: big, liquidity: "1", buyback: "1", operator: "1", deployer: "1", slot: 10n });
+    expect((await db.select().from(fees))[0]!.creatorFeeBtc).toBe(big);
+    await db.insert(processedTx).values({ signature: "s1", slot: 10n });
+    const dup = await db.insert(processedTx).values({ signature: "s1", slot: 10n }).onConflictDoNothing().returning();
+    expect(dup).toHaveLength(0);
   });
 
   it("rejects an unknown ledger type (enum)", async () => {

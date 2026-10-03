@@ -8,6 +8,13 @@
       "when": 1791020026138,
       "tag": "0000_thin_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791025311401,
+      "tag": "0001_m4_indexer_tables",
+      "breakpoints": true
     }
   ]
 }
