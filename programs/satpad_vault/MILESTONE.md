@@ -1,4 +1,6 @@
-# satpad_vault — milestone 2 (in progress)
+# satpad_vault — milestone 2: Vault program
+
+**Status: closed 2026-10-02 pending human review** (D13: Docker-verifiable hash deferred to an amd64 host).
 
 ## Built
 - Task 1: Anchor 1.2 workspace (`Anchor.toml`, `Cargo.toml`, `rust-toolchain.toml` 1.89). `src/consts.rs`: every program bound
@@ -70,6 +72,33 @@
   (+ `vaultProgramData`), decoders to `types.ts` shapes, `parseVaultEvents`. Admin scripts in `scripts/vault-*.ts` with
   `--dry-run`; `.env.example` lists `DEPLOYER_KEYPAIR`, `ADMIN_KEYPAIR`, `UPGRADE_AUTHORITY_KEYPAIR`, `SATPAD_RECOVERY_ADDRESS`.
 
+- Task 8: `scripts/local-fork.sh` loads the program with `--upgradeable-program` and the dev upgrade-authority key
+  (`keys/upgrade-authority-dev.json`, env `VAULT_UPGRADE_AUTHORITY`). Admin scripts exercised on the real validator:
+  `initialize` (Config read back with wBTC decimals = 8), `set-split --dry-run`, `set-pause true/false`.
+  Verifiable build: blocked on arm64 (D13). `solana-verify` 0.5.2 installed for the amd64 run.
+- Task 9: `packages/sdk/src/launch.ts` (`staticAccounts`, `buildV0Transaction`, `createLookupTable`; D14) and
+  `scripts/fork-m2-settle.ts`, the definition-of-done script.
+
+## Build hashes (local, deterministic on this machine; Docker-reproducible hash pending D13)
+| Build | sha256 | Notes |
+| --- | --- | --- |
+| `scripts/build-vault.sh` (SBPF **v2**, 499,440 bytes) | `ef615eb5e6337efc4c99754c0a3626b82191cc79eadc7a5b458765955ea67c50` | passes 66 LiteSVM tests and the M2 DoD on Agave 4.3 |
+| `SBPF_ARCH=v3 scripts/build-vault.sh` (Anchor default, 467,008 bytes) | `7dbf2f8da59aea471d8ae85a8ec93da872fa1fb034eaa1c2076aafd45658230e` | **do not deploy**: `settle` fails on LiteSVM and on the real validator (D11/V14) |
+
+## Definition-of-done evidence (local mainnet fork, Agave 4.3.0, v2 build, 2026-10-02)
+`scripts/local-fork.sh --detach && pnpm fork:m2`
+| Step | Signature / value |
+| --- | --- |
+| initialize | `5oRXapr9vBLGtZ3gMHgM5p6A7sXxry999mPzN5CuChcvvBPPw4usuxdZFAbg8QtBwQLFBMn96JsPDDfjJ6AeB8Ww` (earlier run) |
+| lookup table | 23 static launch accounts |
+| launch: create_v2 (creator = CoinFee) + declare_coin + buy_v2, one v0 tx, 1186 bytes | `F9jUNjhTqsWc9WDXMHDaKbEPTvnQr82RwCKawC1PjXHL1RQkey76QErJy17f1ZWrvhaT2dQ5e4c84GbSM8pqkaz` |
+| mint / CoinFee | `CEPFpFcyrf6bM9ZcSqNEftoNZPRWqiRFepfbtEx3HKmY` / `HNyBxW5aUy3AF6oHqdKWkz4YaHxJag6YagNMknYGYdzm` |
+| launch fee to treasury | 10,000,000 lamports ✓ |
+| 3 more buys, then permissionless `collect_creator_fee_v2` | `563rizwerb738DiacXnVZuVSd6mXswYfaS5WnPmkdV8Ne9krRUC1c8PaKYdTdwZerWmG5YuxdjJ26t2yacsKcrES` — 10 sats into the CoinFee ATA |
+| settle | `2ajssRLNuvEzJjz95GRTtGnwsd1Aqh43Zs41N7jA6NmmrnZrKZugXvdjEpJHMPAu8yLd6KsPN67xs6R686yJPnVW` — liquidity 3, buyback 2, operator 1, deployer 4 (== `splitFee`, D7 remainder to liquidity) |
+| pay_payee | `45g4dFraFeyMgFGvMsEAZqmiW8HQu9BgSaCjR4x1KFkiZdSTBfpZJXWFgyZeV25j8msefFsBr3GXT86sg54TVMSg` — 4 sats to the launcher |
+All 10 script checks PASS. Fork signatures are not on a public explorer; re-run to reproduce (new mint each run).
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -79,5 +108,7 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 8–9 (STATUS.md).
-- VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.
+- Docker-verifiable build hash (D13, amd64 host).
+- Root cause of the SBPF v3 failure (V14) — audit scope.
+- Production lookup-table address pinned in config (D14, M5).
+- `set_lp` on mainnet goes through a Squads proposal (`vault-set-lp.ts --print-ix`); not exercised against a real Squads vault yet (M10).

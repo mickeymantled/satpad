@@ -20,7 +20,8 @@
     "vault:set-wallets": "tsx scripts/vault-set-wallets.ts",
     "vault:set-pause": "tsx scripts/vault-set-pause.ts",
     "vault:recover": "tsx scripts/vault-recover.ts",
-    "vault:set-lp": "tsx scripts/vault-set-lp.ts"
+    "vault:set-lp": "tsx scripts/vault-set-lp.ts",
+    "fork:m2": "tsx scripts/fork-m2-settle.ts"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"
