@@ -1,8 +1,8 @@
 // Shared setup for vault tests: an initialized Config and a fake pump.fun BondingCurve injected into LiteSVM.
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Keypair, PublicKey, SystemProgram, type TransactionInstruction } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
-import { PUMP_PROGRAM_ID, coinFeePda, configPda, lpPotPda } from "@satpad/sdk";
+import { PUMP_PROGRAM_ID, coinFeePda, coinPda, configPda, lpPotPda, payeePotPda, rewardsPotPda } from "@satpad/sdk";
 import { bondingCurvePda } from "@pump-fun/pump-sdk";
 import { VaultSvm } from "./harness";
 
@@ -53,4 +53,57 @@ export function injectCurve(v: VaultSvm, mint: PublicKey, f: CurveFields = {}): 
   const pda = bondingCurvePda(mint);
   v.setAccount(pda, PUMP_PROGRAM_ID, buf);
   return pda;
+}
+
+/** ATA of `owner` for `mint` (off-curve owners allowed). */
+export const ataOf = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true, TOKEN_PROGRAM_ID);
+
+/** Creates `owner`'s ATA for `mint` (payer = v.payer). */
+export function createAta(v: VaultSvm, mint: PublicKey, owner: PublicKey): PublicKey {
+  const ata = ataOf(mint, owner);
+  v.send([createAssociatedTokenAccountIdempotentInstruction(v.payer.publicKey, ata, owner, mint, TOKEN_PROGRAM_ID)], [v.payer]);
+  return ata;
+}
+
+/** Mints `amount` of `mint` (authority = v.payer) to `ata`. */
+export function mintTo(v: VaultSvm, mint: PublicKey, ata: PublicKey, amount: bigint): void {
+  v.send([createMintToInstruction(mint, ata, v.payer.publicKey, amount, [], TOKEN_PROGRAM_ID)], [v.payer]);
+}
+
+export type PayeeArg = { me: object } | { wallet: [PublicKey] } | { holders: object };
+
+/** Builds `declare_coin` for a mint whose curve was injected with `quoteMint`. */
+export async function declareIx(v: VaultSvm, w: Wallets, quoteMint: PublicKey, user: PublicKey, mint: PublicKey, payee: PayeeArg = { me: {} }, treasuryOnly = false): Promise<TransactionInstruction> {
+  return v.program.methods["declareCoin"]!(payee, treasuryOnly).accounts({
+    user, mint, config: configPda()[0], treasury: w.treasury.publicKey, bondingCurve: bondingCurvePda(mint),
+    coin: coinPda(mint)[0], coinFee: coinFeePda(mint)[0], coinFeeAta: ataOf(quoteMint, coinFeePda(mint)[0]),
+    payeePot: payeePotPda(mint)[0], rewardsPot: rewardsPotPda(mint)[0], quoteMint,
+    quoteTokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+  }).instruction();
+}
+
+/** Injects a valid curve and declares the coin. Returns the CoinFee ATA. */
+export async function declaredCoin(v: VaultSvm, w: Wallets, quoteMint: PublicKey, user: Keypair, mint: Keypair, payee: PayeeArg = { me: {} }, treasuryOnly = false): Promise<PublicKey> {
+  injectCurve(v, mint.publicKey, { quoteMint });
+  const signer = treasuryOnly ? w.admin : user;
+  v.send([await declareIx(v, w, quoteMint, signer.publicKey, mint.publicKey, payee, treasuryOnly)], [signer, mint]);
+  return ataOf(quoteMint, coinFeePda(mint.publicKey)[0]);
+}
+
+/** Builds `settle` for a declared coin. */
+export async function settleIx(v: VaultSvm, w: Wallets, quoteMint: PublicKey, mint: PublicKey, overrides: Record<string, PublicKey> = {}): Promise<TransactionInstruction> {
+  return v.program.methods["settle"]!().accounts({
+    config: configPda()[0], mint, coin: coinPda(mint)[0], coinFee: coinFeePda(mint)[0], coinFeeAta: ataOf(quoteMint, coinFeePda(mint)[0]),
+    lpPot: lpPotPda()[0], buybackAta: ataOf(quoteMint, w.buyback.publicKey), treasuryAta: ataOf(quoteMint, w.treasury.publicKey),
+    payeePot: payeePotPda(mint)[0], rewardsPot: rewardsPotPda(mint)[0], quoteMint, quoteTokenProgram: TOKEN_PROGRAM_ID, ...overrides,
+  }).instruction();
+}
+
+/** Rewrites a decoded Anchor account with `patch` applied (for state only later tasks' instructions can set). */
+export async function patchAccountAsync(v: VaultSvm, name: string, pk: PublicKey, patch: Record<string, unknown>): Promise<void> {
+  const current = v.decode<Record<string, unknown>>(name, pk);
+  const owner = v.accountOwner(pk)!;
+  const lam = v.lamportsOf(pk);
+  const buf = await v.coder.accounts.encode(name, { ...current, ...patch });
+  v.setAccount(pk, owner, buf, lam);
 }

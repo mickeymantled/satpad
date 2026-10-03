@@ -13,8 +13,8 @@
     "fork": "scripts/local-fork.sh",
     "fork:smoke": "tsx scripts/fork-smoke.ts",
     "fork:m1": "tsx scripts/fork-create-and-buy.ts",
-    "build:vault": "anchor build",
-    "test:vault": "anchor build && pnpm --filter @satpad/tests test"
+    "build:vault": "scripts/build-vault.sh",
+    "test:vault": "scripts/build-vault.sh && pnpm --filter @satpad/tests test"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"

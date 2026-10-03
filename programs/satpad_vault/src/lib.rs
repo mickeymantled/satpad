@@ -29,4 +29,9 @@ pub mod satpad_vault {
     pub fn declare_coin(ctx: Context<DeclareCoin>, payee: PayeeChoice, treasury_only: bool) -> Result<()> {
         instructions::declare_coin::handle_declare_coin(ctx, payee, treasury_only)
     }
+
+    /// Splits whatever sits in the coin's `CoinFee` ATA by the current `Config.split`. Anyone can call.
+    pub fn settle<'info>(ctx: Context<'info, Settle<'info>>) -> Result<()> {
+        instructions::settle::handle_settle(ctx)
+    }
 }

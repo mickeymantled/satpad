@@ -21,13 +21,25 @@
   signature, wrong creator, SOL-quoted and foreign-quoted curves, fee bps 0/99/101/300, holder-reward, mayhem, missing /
   wrong-owner / bad-discriminator curve, wrong treasury, foreign quote mint account, treasury_only non-admin, zero launch fee.
 
+- Task 3: `instructions/settle.rs` — anyone can call; refuses when `Config.paused` or `Coin.paused`; no-op on empty
+  ATA; `split_amount` floors buyback/operator/deployer and gives the remainder to liquidity (D7) via u128;
+  transfers CPI-signed by the `CoinFee` PDA to `LpPot`, `ATA(buyback_wallet)`, `ATA(treasury)`, and `PayeePot` or
+  `RewardsPot` by payee mode; treasury-only coins send 100% to treasury; `Settled` event. Destination ATAs are
+  validated as ATAs of the configured wallets and must already exist.
+- Tests: `settle.test.ts` (10): exact 10000 split, cumulative parity with `@satpad/sdk` `splitFee` at edge amounts,
+  empty no-op, anyone-can-call, Holders → RewardsPot, treasury-only, split change applies to waiting fees, global and
+  per-coin pause, every destination substituted with an attacker ATA, missing destination ATA. Rust unit tests for the
+  split at u64::MAX and bound edges.
+- `scripts/build-vault.sh`: `anchor build` + `cargo build-sbf --arch v2` (D11).
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-pnpm test:vault                                  # anchor build + LiteSVM tests
+pnpm test:vault                                  # scripts/build-vault.sh (anchor build + SBPF v2) + LiteSVM tests
 cargo test -p satpad_vault                       # Rust unit tests (bounds)
 cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads recovery address is set
 ```
 
 ## Deferred
-- Tasks 3–9 (STATUS.md).
+- Tasks 4–9 (STATUS.md).
+- VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.

@@ -53,3 +53,8 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 **Reason:** D9 pre-approved LiteSVM as the fallback. Keeping web3.js v1 in tests keeps `@satpad/sdk` helpers usable there.
 **Consequence:** CLAUDE.md "Anchor tests use bankrun" → read as LiteSVM. `pnpm test:vault` runs `anchor build` first because tests load `target/deploy/*.so` and `target/idl/*.json` (gitignored).
 **Status:** in effect (covered by D9 approval).
+
+## D11 — 2026-10-02 — M2 — Program tests run against an SBPF v2 build; Anchor 1.2 defaults to v3
+**Finding:** With the identical source, the LiteSVM 1.5 suite passes 28/28 on SBPF v1 and v2 builds and fails on v3 (and v0) with corrupted stack temporaries (a `Pubkey` garbage past byte 8 in a seeds check; an access violation in `settle`). anchor-syn 1.2's constraint codegen was read and is inline, so the program's `mint.key().as_ref()` idiom is sound; the VM is at fault.
+**Decision:** `scripts/build-vault.sh` = `anchor build` (IDL) + `cargo build-sbf --arch v2`. `pnpm test:vault` uses it. Task 9 (DoD on the real `solana-test-validator` 4.3 fork) must also run once with `SBPF_ARCH=v3` so the default binary is exercised on the real runtime. Which SBPF version mainnet accepts for deploy is VERIFIED V14 (open) and decides the M10 build arch.
+**Status:** in effect (test-infrastructure choice; no spec deviation).

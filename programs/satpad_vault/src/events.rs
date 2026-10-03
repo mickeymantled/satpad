@@ -22,3 +22,16 @@ pub struct Declared {
     pub creator_fee_bps: u16,
     pub launch_fee_lamports: u64,
 }
+
+#[event]
+pub struct Settled {
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub liquidity: u64,
+    pub buyback: u64,
+    pub operator: u64,
+    pub deployer: u64,
+    /// `PayeePot`, `RewardsPot`, or the treasury ATA for a treasury-only coin.
+    pub deployer_destination: Pubkey,
+    pub split: Split,
+}

@@ -34,4 +34,8 @@ pub enum VaultError {
     NotAdmin,
     #[msg("treasury account does not match Config.treasury")]
     WrongTreasury,
+    #[msg("vault is paused")]
+    Paused,
+    #[msg("coin is paused")]
+    CoinPaused,
 }
