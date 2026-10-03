@@ -27,7 +27,8 @@ export interface Config {
   lastLpDrawTs: bigint;
 }
 
-export type PayeeMode = "me" | "wallet" | "holders";
+/** On-chain mode. "Me" is only a declare-time choice (`PayeeChoice`); it is stored as `wallet` with payee = deployer. */
+export type PayeeMode = "wallet" | "holders";
 
 export interface Coin {
   mint: PublicKey;
