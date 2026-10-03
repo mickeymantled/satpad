@@ -74,4 +74,8 @@ jobs:
         run: |
           git config user.name "satpad-ci"; git config user.email "ci@users.noreply.github.com"
           git add programs/satpad_vault/MILESTONE.md
-          git diff --cached --quiet || { git commit -m "ci: record verifiable build hash for ${GITHUB_SHA::7} [skip ci]"; git push; }
+          git diff --cached --quiet && exit 0
+          git commit -m "ci: record verifiable build hash for ${GITHUB_SHA::7} [skip ci]"
+          # main may have moved while the build ran: rebase and retry the push a few times
+          for i in 1 2 3 4 5; do git pull --rebase origin main && git push && exit 0; sleep $((i * 5)); done
+          exit 1
