@@ -30,7 +30,8 @@
     "keeper": "pnpm --filter @satpad/keeper start",
     "fork:check": "tsx scripts/fork-keeper-check.ts",
     "fixtures:capture": "tsx scripts/capture-fixtures.ts",
-    "fork:check:rolling": "scripts/fork-rolling-check.sh"
+    "fork:check:rolling": "scripts/fork-rolling-check.sh",
+    "indexer": "pnpm --filter @satpad/indexer start"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*",

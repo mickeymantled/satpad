@@ -1,0 +1,10 @@
+# Railway service config (SPEC "Infra"). Secrets (keypair files, DATABASE_URL, RPC URL) are Railway variables/volumes.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "indexer/Dockerfile"
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

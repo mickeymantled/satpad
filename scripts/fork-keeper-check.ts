@@ -59,9 +59,15 @@ async function main() {
     const typeOf = { Settled: "settle", PayeePaid: "pay_payee" } as const;
 
     // 1. ledger → chain
+    const IN_FLIGHT_MS = 90_000; // a `built`/`sent` row younger than this is a transaction still confirming, not drift
+    let inFlight = 0;
     for (const r of rows) {
       if (r.status === "failed") { problems.push(`ledger ${r.id} ${r.type} ${r.mint} FAILED: ${r.error}`); continue; }
-      if (r.status !== "confirmed") { problems.push(`ledger ${r.id} ${r.type} ${r.mint} stuck in status ${r.status}`); continue; }
+      if (r.status !== "confirmed") {
+        if (Date.now() - r.createdAt.getTime() < IN_FLIGHT_MS) { inFlight++; continue; }
+        problems.push(`ledger ${r.id} ${r.type} ${r.mint} stuck in status ${r.status} for > ${IN_FLIGHT_MS / 1000}s`);
+        continue;
+      }
       if (!r.signature) { problems.push(`ledger ${r.id} confirmed without a signature`); continue; }
       if (r.type === "collect_creator_fee") {
         const tx = await conn.getTransaction(r.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
@@ -95,7 +101,7 @@ async function main() {
       rpc: RPC, requestedSinceSlot: requested, firstAvailableBlock: firstAvailable, sinceSlot,
       ledgerRowsTotal: allRows.length, ledgerRowsChecked: rows.length, ledgerRowsOlderThanRetainedHistory: purged.length,
       chainEvents: events.length, settles: settled.length, payouts: events.length - settled.length,
-      failedRows: allRows.filter((r) => r.status === "failed").length, maxLagS: lags.length ? Math.max(...lags) : null, avgLagS: lags.length ? Math.round(lags.reduce((a, b) => a + b, 0) / lags.length) : null,
+      failedRows: allRows.filter((r) => r.status === "failed").length, inFlightRows: inFlight, maxLagS: lags.length ? Math.max(...lags) : null, avgLagS: lags.length ? Math.round(lags.reduce((a, b) => a + b, 0) / lags.length) : null,
       rolling, problems,
     };
     console.log(JSON.stringify(summary, null, 2));

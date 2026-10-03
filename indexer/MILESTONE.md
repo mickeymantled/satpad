@@ -33,6 +33,13 @@
   and registrations. Tests (4, Postgres): unregistered ignored → registered indexed, duplicate signature rejected,
   holders/holder_count, sell + stage flip at 10 buys, fees idempotent.
 
+- Task 5: `src/config.ts`, `src/main.ts` — each pass polls the vault program first (registrations) then every registered
+  curve/pool through the `TokenBucket` (`RPC_RATE_PER_SECOND`, default 4; `RPC_BURST` 8); `/healthz` (503 when stale or
+  failing); `keeper_health` row `indexer-poll`; a `rpc rate` log line every minute (total, last-minute, waited-ms) so a
+  soak summary can show the footprint; optional Helius webhook receiver; `--once`. `Dockerfile`, `railway.toml`.
+  First run against the live soak fork (2026-10-03 ~12:35 UTC): pass 1 = 65 txs / 76 RPC calls / 14.9 s limiter wait,
+  steady state ~27 calls per 5 s pass; 10 coins, trades/holders/fees populated; the soak's rolling reconciler stayed clean.
+
 ## Deferred
 - `launch_v0.json` fixture (needs a fresh fork; test validator history is ~60 slots).
 - Tasks 2–8 (STATUS.md).
