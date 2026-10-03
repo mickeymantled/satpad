@@ -46,11 +46,23 @@ export class PollingSource {
     // Page backwards from newest until the cursor; collect, then process oldest → newest.
     const sigs: { signature: string; slot: number; err: unknown }[] = [];
     let before: string | undefined;
+    // `until` is the cheap path; a node with short history (solana-test-validator keeps ~60 slots; a pruned RPC)
+    // rejects an `until` it no longer has, so fall back to paging by slot floor and dedupe by signature/slot.
+    let useUntil = Boolean(cursor?.lastSignature);
     for (;;) {
       await this.bucket.take();
-      const page = await this.rpc.getSignaturesForAddress(address, { limit, ...(before && { before }), ...(cursor?.lastSignature && { until: cursor.lastSignature }) }, "confirmed");
-      sigs.push(...page.map((s) => ({ signature: s.signature, slot: s.slot, err: s.err })));
-      if (page.length < limit) break;
+      let page;
+      try {
+        page = await this.rpc.getSignaturesForAddress(address, { limit, ...(before && { before }), ...(useUntil && cursor?.lastSignature && { until: cursor.lastSignature }) }, "confirmed");
+      } catch (e) {
+        if (useUntil && /not found/i.test((e as Error).message)) { useUntil = false; this.opts.log?.("cursor signature not in node history; paging by slot", { address: key }); continue; }
+        throw e;
+      }
+      const floor = cursor?.lastSlot ?? 0n;
+      const fresh = useUntil ? page : page.filter((s) => BigInt(s.slot) > floor || (BigInt(s.slot) === floor && s.signature !== cursor?.lastSignature));
+      sigs.push(...fresh.map((s) => ({ signature: s.signature, slot: s.slot, err: s.err })));
+      const reachedCursor = !useUntil && page.some((s) => BigInt(s.slot) <= floor);
+      if (page.length < limit || reachedCursor) break;
       before = page[page.length - 1]!.signature;
     }
     sigs.reverse();

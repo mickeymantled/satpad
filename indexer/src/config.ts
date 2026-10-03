@@ -9,6 +9,8 @@ export interface IndexerConfig {
   healthPort: number;
   /** Extra static addresses to watch (e.g. the $SATPAD pool once it exists). */
   extraAddresses: string[];
+  /** Full holders rebuild per coin via getProgramAccounts, every this many ms (0 disables). */
+  holderSweepIntervalMs: number;
 }
 const int = (env: NodeJS.ProcessEnv, k: string, d: number) => { const v = env[k]; if (v === undefined || v === "") return d; const n = Number(v); if (!Number.isFinite(n) || n < 0) throw new Error(`env ${k} must be a non-negative number`); return n; };
 const req = (env: NodeJS.ProcessEnv, k: string) => { const v = env[k]; if (!v) throw new Error(`missing env ${k}`); return v; };
@@ -20,5 +22,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): IndexerConfig 
     pollIntervalMs: int(env, "POLL_INTERVAL_MS", 5_000), rpcRatePerSecond: int(env, "RPC_RATE_PER_SECOND", 4), rpcBurst: int(env, "RPC_BURST", 8),
     webhookPort, webhookAuthHeader: env["WEBHOOK_AUTH_HEADER"] ?? null, healthPort: int(env, "HEALTH_PORT", 8082),
     extraAddresses: (env["EXTRA_ADDRESSES"] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    holderSweepIntervalMs: int(env, "HOLDER_SWEEP_INTERVAL_MS", 600_000),
   };
 }

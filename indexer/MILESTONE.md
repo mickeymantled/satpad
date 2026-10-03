@@ -1,4 +1,6 @@
-# indexer — milestone 4 (in progress)
+# indexer — milestone 4: Indexer and API
+
+**Status: closed 2026-10-03 pending human review.** DoD: `/coins` and `/ledger` match on-chain state for the fork set — **met** (`pnpm fork:api-check`: 10 coins, reserves/progress/stage exact, 20 holder balances exact vs a fresh getProgramAccounts sweep, ledger entries within the validator's retained window; 0 problems).
 
 ## Built
 - Task 1: `packages/db` migration `0001_m4_indexer_tables`: `trades` (pk signature+ix_index, venue, price scaled 1e12),
@@ -40,6 +42,16 @@
   First run against the live soak fork (2026-10-03 ~12:35 UTC): pass 1 = 65 txs / 76 RPC calls / 14.9 s limiter wait,
   steady state ~27 calls per 5 s pass; 10 coins, trades/holders/fees populated; the soak's rolling reconciler stayed clean.
 
+- Task 8: `scripts/fork-api-check.ts` (`pnpm fork:api-check`) — waits until each coin's newest curve tx is indexed
+  (≤ 30 s), then diffs the API against the chain: curve reserves/progress/stage, ledger entries (retained window) vs
+  vault events, holders table vs a `getProgramAccounts` sweep (human note), `holderCount`. Exit 1 on drift. Added to
+  `keeper-reconcile.yml` after a `--once` indexer run. Findings on the live fork: `getSignaturesForAddress(until)`
+  fails once the cursor's signature is purged from a short-history node → slot-floor fallback (`polling.ts`); launches
+  that predate the indexer are invisible to balance deltas → periodic holders sweep (`sweep.ts`,
+  `HOLDER_SWEEP_INTERVAL_MS`, default 10 min, 1 RPC call per coin).
+
 ## Deferred
 - `launch_v0.json` fixture (needs a fresh fork; test validator history is ~60 slots).
+- Helius webhook source is implemented but only unit-tested (no Helius account on the fork); first live use is M10 staging.
+- PumpSwap (pool) trade decoding — M6 when a pool exists on the fork.
 - Tasks 2–8 (STATUS.md).

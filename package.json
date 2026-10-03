@@ -31,7 +31,8 @@
     "fork:check": "tsx scripts/fork-keeper-check.ts",
     "fixtures:capture": "tsx scripts/capture-fixtures.ts",
     "fork:check:rolling": "scripts/fork-rolling-check.sh",
-    "indexer": "pnpm --filter @satpad/indexer start"
+    "indexer": "pnpm --filter @satpad/indexer start",
+    "fork:api-check": "tsx scripts/fork-api-check.ts"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*",
@@ -51,6 +52,9 @@
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.18.0",
     "vitest": "^3.0.0",
-    "@coral-xyz/anchor": "^0.32.1"
+    "@coral-xyz/anchor": "^0.32.1",
+    "fastify": "^5.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "@fastify/websocket": "^11.0.0"
   }
 }

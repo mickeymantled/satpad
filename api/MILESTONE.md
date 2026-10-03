@@ -1,4 +1,6 @@
-# api — milestone 4 (in progress)
+# api — milestone 4: Indexer and API
+
+**Status: closed 2026-10-03 pending human review** (DoD evidence in `indexer/MILESTONE.md`).
 
 ## Built
 - Task 6: Fastify 5 (D16) read-only API over the indexer tables. `src/prices.ts`: `PriceProvider` — `PythPriceProvider`
@@ -16,4 +18,5 @@
   buffered; `/healthz` reports `liveClients`. Test: two real `ws` clients receive both notifications in order.
 
 ## Deferred
-- Task 8 API-vs-chain check.
+- `PRICE_SOURCE=pyth` is implemented (V7) but can only run against mainnet/devnet RPC; the fork uses the fixed price.
+- `trending` sort is 1 h trade count then 24 h volume — revisit with real data (M5/M9).

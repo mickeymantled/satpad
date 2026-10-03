@@ -10,6 +10,7 @@ import { loadConfig } from "./config";
 import { Processor } from "./process";
 import { TokenBucket } from "./ratelimit";
 import { PgCursorStore, PollingSource, WebhookQueue, startWebhookServer } from "./sources";
+import { sweepHolders } from "./sweep";
 
 const log = (level: string, msg: string, f: Record<string, unknown> = {}) => process.stdout.write(JSON.stringify({ ts: new Date().toISOString(), level, msg, service: "indexer", ...f }, (_k, v) => (typeof v === "bigint" ? v.toString() : v)) + "\n");
 
@@ -37,6 +38,18 @@ async function main(): Promise<void> {
     return [...set].map((a) => new PublicKey(a));
   };
 
+  const lastSweep = new Map<string, number>();
+  const sweepDue = async (): Promise<number> => {
+    if (cfg.holderSweepIntervalMs === 0) return 0;
+    const rows = await db.select({ mint: coins.mint, bondingCurve: coins.bondingCurve, pool: coins.pool }).from(coins);
+    let n = 0;
+    for (const r of rows) {
+      if (Date.now() - (lastSweep.get(r.mint) ?? 0) < cfg.holderSweepIntervalMs) continue;
+      try { const res = await sweepHolders(conn, bucket, db, r.mint, r.bondingCurve, r.pool); lastSweep.set(r.mint, Date.now()); n++; log("info", "holders swept", { mint: r.mint, ...res }); }
+      catch (e) { log("warn", "holders sweep failed", { mint: r.mint, error: (e as Error).message }); }
+    }
+    return n;
+  };
   const pass = async () => {
     const t0 = Date.now();
     const before = bucket.stats().total;
@@ -44,8 +57,9 @@ async function main(): Promise<void> {
     const vault = await polling.pollAll([SATPAD_VAULT_PROGRAM_ID]);
     const others = (await watchList()).filter((a) => !a.equals(SATPAD_VAULT_PROGRAM_ID));
     const rest = await polling.pollAll(others);
+    const swept = await sweepDue();
     const stats = bucket.stats();
-    const result = { addresses: others.length + 1, fetched: vault.fetched + rest.fetched, handled: vault.handled + rest.handled, rpcCalls: stats.total - before, rpcLastMinute: stats.lastMinute, rpcWaitedMs: stats.waitedMs, ms: Date.now() - t0, processor: { ...processor.stats } };
+    const result = { addresses: others.length + 1, fetched: vault.fetched + rest.fetched, handled: vault.handled + rest.handled, swept, rpcCalls: stats.total - before, rpcLastMinute: stats.lastMinute, rpcWaitedMs: stats.waitedMs, ms: Date.now() - t0, processor: { ...processor.stats } };
     state.lastPass = result;
     return result;
   };

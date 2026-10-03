@@ -2,7 +2,7 @@
 
 **Current milestone:** 3 — Keeper, claim and settle loop (M2 approved by human 2026-10-02; M3 code BLOCKED on the V14 investigation, one session, then plan)
 **Last completed step:** M3 task 7 — `scripts/fork-keeper-check.ts` reconciler (ledger→chain: every confirmed row has a matching `Settled`/`PayeePaid` event with equal mint+amounts, collects exist on chain; chain→ledger: every vault event has exactly one confirmed row; failed/stuck rows reported; per-coin trade→settle lag). Live fork: 24 rows ↔ 14 events, 0 problems, max lag 43 s; a forged row makes it exit 1. `.github/workflows/keeper-reconcile.yml` written (fork + Postgres service + seed/trade/keeper/check on every push) — uncommitted until the token has `workflow` scope. Earlier: task 6 — `scripts/lib/fork.ts` (shared fork helpers: funding, wBTC mint, launch table, v0 launch), `scripts/fork-seed-coins.ts` (vault init with distinct wallets + N coins via the real launch flow, payees Me/Wallet/Holders round-robin; writes `scripts/fork-keys/seed.json`), `scripts/fork-trader.ts` (random buys/sells). Verified on the fork: 10 coins, 84 trades/0 errors, then `keeper --once` → 10 collect + 10 settle + 4 pay_payee rows confirmed, Holders and ATA-less payees correctly skipped. Earlier: task 5 — `scheduler.ts` (serialised ticks, consecutive-failure count, alert once at 3, `--once`), `health.ts` (`/healthz`, 503 when stale/failing), `alerts.ts` (Telegram + no-op), `main.ts` wiring (Postgres ledger, live/fixed fees, keeper_health upsert, SIGTERM), `Dockerfile` + `railway.toml`; 4 tests (28 keeper tests). Earlier: task 4 — `keeper/src/loops/settle.ts` `settleTick`: per coin, collect (≥ dust) → settle (re-read balance; split amounts in the ledger; treasury-only path) → pay_payee only when the payee ATA exists; paused coin/vault skips; per-coin try/catch; graduated AMM vault flagged for M6; `src/chain.ts` `RpcChainReader`. 7 scenario tests (24 keeper tests). Earlier: task 3 — `keeper/src/coins.ts`: `discoverCoins` (getProgramAccounts on the `Coin` discriminator, SDK decode, garbage-tolerant) + `upsertCoins` (registry subset into `coins`, indexer-owned columns untouched); 2 tests (17 keeper tests). SDK `PayeeMode` narrowed to on-chain values. Earlier: task 2 — keeper `config.ts` (env, redacted describe), `keys.ts`, `log.ts` (JSON lines), `fees.ts` (provider interface, fixed + bump), `ledger.ts` (Postgres + memory stores), `rpc.ts` `Sender` (simulate → send → confirm, bumped-fee retry on expiry ≤ 5, ledger built→sent→confirmed/failed); 10 tests. `LiveFeeProvider` (Helius → `getRecentPrioritizationFees` p75 → min, clamped, bumped) per V15; 15 keeper tests.
-**Next step:** M4 task 8 (`scripts/fork-api-check.ts` incl. holders sweep; CI job; close M4). Indexer running detached against the soak fork since ~12:35 UTC (`.fork-ledger/soak-indexer.log`, 4 req/s budget, per-minute `rpc rate` lines). Note: `fork-keeper-check` treats `sent` rows < 90 s old as in-flight (3 false positives at windows 17–21 were cleared from the rolling accumulator with a logged note). The test validator retains only ~60 slots; `fork-keeper-check` is now retention-aware and `scripts/fork-rolling-check.sh` (running detached since ~11:40 UTC) accumulates verified windows into `.fork-ledger/soak-rolling.json`, which the final check merges. M3 task 8 soak running detached (`scripts/fork-soak.sh`, log `.fork-ledger/soak.log`); it writes its summary into STATUS.md and `keeper/MILESTONE.md` when done. `.github/workflows/verify-build.yml` is written but uncommitted until the GitHub token has the `workflow` scope.
+**Next step:** Human review gate for M4; commit the M3 soak summary when it lands (~09:51 UTC 2026-10-04) and close M3; then M5 plan. Indexer running detached against the soak fork since ~12:35 UTC (`.fork-ledger/soak-indexer.log`, 4 req/s budget, per-minute `rpc rate` lines). Note: `fork-keeper-check` treats `sent` rows < 90 s old as in-flight (3 false positives at windows 17–21 were cleared from the rolling accumulator with a logged note). The test validator retains only ~60 slots; `fork-keeper-check` is now retention-aware and `scripts/fork-rolling-check.sh` (running detached since ~11:40 UTC) accumulates verified windows into `.fork-ledger/soak-rolling.json`, which the final check merges. M3 task 8 soak running detached (`scripts/fork-soak.sh`, log `.fork-ledger/soak.log`); it writes its summary into STATUS.md and `keeper/MILESTONE.md` when done. `.github/workflows/verify-build.yml` is written but uncommitted until the GitHub token has the `workflow` scope.
 **Blockers:** none for M3 code — V14 session done (D15): mainnet accepts SBPF v2; v3 bug isolated to the full `settle` validation frame; toolchain pinned (Anchor 1.2.0 / cargo-build-sbf 4.1.0 / platform-tools v1.57 / arch v2); CI `verify-build.yml` added; audit scope in `docs/AUDIT_SCOPE.md`. Upstream issue drafted, not filed.
 
 ## Toolchain (installed 2026-10-02)
@@ -41,7 +41,7 @@ See `programs/satpad_vault/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V
 
 **Tasks (one commit each, vitest with every task):**
 
-Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254118a` · task 4 — `68511e6` · task 5 — `38adad8` · task 6 — `66de03e` · task 7 — (this commit)
+Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254118a` · task 4 — `68511e6` · task 5 — `38adad8` · task 6 — `66de03e` · task 7 — `c6dd3e9` · task 8 — (this commit)
 
 1. `packages/db`: Drizzle schema for `ledger` and `coins` (registry subset), migrations, `pnpm db:migrate`; test against local Postgres (skips with a clear message if `DATABASE_URL` is unset).
 2. `keeper/src/config.ts` + `keys.ts`: env parsing (zod), keypair loading, never logs secrets; `keeper/src/rpc.ts`: connection, priority-fee provider interface (Helius impl + fixed fallback), `sendWithRetry` (simulate, bump fee on expiry, ≤ 5 attempts) with ledger before/after hooks; tests with a mocked Connection.
@@ -54,7 +54,15 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 
 **Needs human before task 1:** none (Postgres and Drizzle are named in SPEC). Telegram alerts need a bot token only when deployed.
 
-## Milestone 4 — Indexer and API (human said "go" 2026-10-03; Fastify approved = D16)
+## Milestone 4 — Indexer and API — closed 2026-10-03 (pending review; human said "go" 2026-10-03; Fastify = D16)
+
+DoD met: `pnpm fork:api-check` → 0 problems on the live soak fork (10 coins, 20 holder balances, ledger within retention). Evidence in `indexer/MILESTONE.md`, `api/MILESTONE.md`.
+
+### Review gate
+- DECISIONS: D16 (Fastify, approved). No deviations from SPEC.
+- VERIFIED: V7 (Pyth on-chain feed; Hermes needs a key), V8 (Helius webhooks: best-effort, dedupe, polling reconciles).
+- Tests added: db 5, indexer 20, api 11 — all Postgres-backed where it matters, decoders on fork-recorded fixtures.
+- Deferred: launch fixture, Helius webhook live test, PumpSwap trades, Pyth live run. See MILESTONE files.
 
 **Definition of done (SPEC):** `/coins` and `/ledger` match on-chain state for the fork set. Verified by a script that reads the chain directly and diffs the API.
 
@@ -81,4 +89,4 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 7. `WS /live`: trade + new-coin stream from Postgres `LISTEN/NOTIFY` emitted by the processor; test with a real socket.
 8. `scripts/fork-api-check.ts`: reads chain state for the fork's coins (curve reserves, counts of vault events) and diffs `/coins` + `/ledger`; exits non-zero on mismatch. **(human note)** also diffs the `holders` table against a fresh `getProgramAccounts` sweep of each coin's token accounts, because holders are built from balance deltas and that is where drift hides. Add to `keeper-reconcile.yml` as a second job. Close M4 (`indexer/MILESTONE.md`, `api/MILESTONE.md`).
 
-Done: task 1 — `33d99e6` · task 2 — `621b048` · task 3 — `5838fc3` · task 4 — `78a9ba7` · task 5 — `51e9d8d` · task 6 — `b15ea2c` · task 7 — (this commit)
+Done: task 1 — `33d99e6` · task 2 — `621b048` · task 3 — `5838fc3` · task 4 — `78a9ba7` · task 5 — `51e9d8d` · task 6 — `b15ea2c` · task 7 — `c6dd3e9` · task 8 — (this commit)

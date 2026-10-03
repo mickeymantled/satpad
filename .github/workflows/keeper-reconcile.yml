@@ -59,9 +59,13 @@ jobs:
           pnpm fork:trade --rate-ms 300 --duration-s 10
           KEEPER_KEYPAIR="$PWD/scripts/fork-keys/keeper.json" pnpm --filter @satpad/keeper exec tsx src/main.ts --once
           pnpm fork:check --json reconcile.json
+          RPC_RATE_PER_SECOND=20 HOLDER_SWEEP_INTERVAL_MS=1 pnpm --filter @satpad/indexer exec tsx src/main.ts --once
+          pnpm fork:api-check --json api-check.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: reconcile-${{ github.sha }}
-          path: reconcile.json
+          path: |
+            reconcile.json
+            api-check.json
           if-no-files-found: ignore
