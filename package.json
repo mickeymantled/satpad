@@ -9,7 +9,11 @@
     "typecheck": "pnpm -r --if-present typecheck && tsc -p tsconfig.json",
     "lint": "eslint .",
     "fork": "scripts/local-fork.sh",
-    "fork:smoke": "tsx scripts/fork-smoke.ts"
+    "fork:smoke": "tsx scripts/fork-smoke.ts",
+    "fork:m1": "tsx scripts/fork-create-and-buy.ts"
+  },
+  "dependencies": {
+    "@satpad/sdk": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

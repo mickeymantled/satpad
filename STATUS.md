@@ -31,4 +31,5 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - Task 2: quoteMints.ts — `a83c967`
 - Task 3: pda.ts — `e27b4e0`
 - Task 4: amounts.ts + types.ts — `db6630c`
-- Task 5: pump.ts — (this commit)
+- Task 5: pump.ts — `22783d1`
+- Task 6: scripts/fork-create-and-buy.ts — (this commit)

@@ -40,9 +40,12 @@ export interface FeeRecipients {
   buybackFeeRecipient: PublicKey;
 }
 
-/** Deterministic recipients: Global's primary fee recipient and the first pinned buyback recipient. */
+/** Index into {@link PUMP_BUYBACK_FEE_RECIPIENTS} used by default; the local fork clones this one and its wBTC ATA. */
+export const DEFAULT_BUYBACK_RECIPIENT_INDEX = 1;
+
+/** Deterministic recipients: Global's primary fee recipient and the pinned buyback recipient. */
 export function defaultFeeRecipients(global: Pick<Global, "feeRecipient">): FeeRecipients {
-  return { feeRecipient: global.feeRecipient, buybackFeeRecipient: PUMP_BUYBACK_FEE_RECIPIENTS[0]! };
+  return { feeRecipient: global.feeRecipient, buybackFeeRecipient: PUMP_BUYBACK_FEE_RECIPIENTS[DEFAULT_BUYBACK_RECIPIENT_INDEX]! };
 }
 
 export interface CreateV2Params {

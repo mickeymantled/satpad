@@ -6,6 +6,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-tok
 import { bondingCurvePda, creatorVaultPda } from "@pump-fun/pump-sdk";
 import {
   COIN_TOKEN_PROGRAM,
+  DEFAULT_BUYBACK_RECIPIENT_INDEX,
   PUMP_BUYBACK_FEE_RECIPIENTS,
   buildBuyV2,
   buildCollectCreatorFeeV2,
@@ -125,6 +126,7 @@ describe("fee recipients", () => {
     const fr = Keypair.generate().publicKey;
     const r = defaultFeeRecipients({ feeRecipient: fr });
     expect(r.feeRecipient.equals(fr)).toBe(true);
-    expect(r.buybackFeeRecipient.equals(PUMP_BUYBACK_FEE_RECIPIENTS[0]!)).toBe(true);
+    expect(r.buybackFeeRecipient.equals(PUMP_BUYBACK_FEE_RECIPIENTS[DEFAULT_BUYBACK_RECIPIENT_INDEX]!)).toBe(true);
+    expect(r.buybackFeeRecipient.toBase58()).toBe("9M4giFFMxmFGXtc3feFzRai56WbBqehoSeRE5GK7gf7"); // cloned by scripts/local-fork.sh
   });
 });
