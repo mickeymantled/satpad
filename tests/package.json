@@ -1,0 +1,22 @@
+{
+  "name": "@satpad/tests",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@satpad/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "litesvm": "^1.5.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0",
+    "@solana/kit": "^8.0.0"
+  }
+}

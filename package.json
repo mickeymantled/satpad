@@ -2,7 +2,9 @@
   "name": "satpad",
   "private": true,
   "packageManager": "pnpm@11.3.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
@@ -10,7 +12,9 @@
     "lint": "eslint .",
     "fork": "scripts/local-fork.sh",
     "fork:smoke": "tsx scripts/fork-smoke.ts",
-    "fork:m1": "tsx scripts/fork-create-and-buy.ts"
+    "fork:m1": "tsx scripts/fork-create-and-buy.ts",
+    "build:vault": "anchor build",
+    "test:vault": "anchor build && pnpm --filter @satpad/tests test"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"

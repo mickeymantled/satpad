@@ -47,3 +47,9 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 - `declare_coin` requires the curve's `creator_fee_bps == Config.creator_fee_bps` exactly (not ≤ cap). Every registered coin pays the same fee or it is not registered.
 - LiteSVM pre-approved as the bankrun fallback if bankrun cannot load an Anchor 1.2 binary (test dep only).
 **Status:** approved by human 2026-10-02.
+
+## D10 — 2026-10-02 — M2 — Program tests run on LiteSVM 1.5 (kit-typed) through a web3.js shim; bankrun dropped
+**Decision:** `solana-bankrun` 0.4.0 (last published 2024-10, bundles solana-program-test 1.18) hangs/panics loading the Anchor 1.2 binary (SBPF v3). LiteSVM 0.8 (last web3.js-v1 line) rejects the ELF too. LiteSVM 1.5.0 (2026-09) loads it but is typed against `@solana/kit`. `tests/vault/harness.ts` builds transactions with web3.js v1 and decodes them into kit's wire type with `getTransactionDecoder()`; tests never touch kit. `@solana/kit` is a test-only dependency.
+**Reason:** D9 pre-approved LiteSVM as the fallback. Keeping web3.js v1 in tests keeps `@satpad/sdk` helpers usable there.
+**Consequence:** CLAUDE.md "Anchor tests use bankrun" → read as LiteSVM. `pnpm test:vault` runs `anchor build` first because tests load `target/deploy/*.so` and `target/idl/*.json` (gitignored).
+**Status:** in effect (covered by D9 approval).

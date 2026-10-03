@@ -4,6 +4,7 @@ packages:
   - indexer
   - api
   - web
+  - tests
 allowBuilds:
   bigint-buffer: false
   bufferutil: false

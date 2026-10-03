@@ -1,0 +1,20 @@
+[toolchain]
+anchor_version = "1.2.0"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+satpad_vault = "52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+# Program tests live in tests/vault (TypeScript). `anchor test` is not used; see package.json "test:vault".
+test = "pnpm test:vault"
+
+[test]
+skip_local_validator = true

@@ -1,0 +1,29 @@
+[package]
+name = "satpad_vault"
+version = "0.1.0"
+description = "Satpad fee vault: splits every coin's pump.fun creator fee (in wBTC) on chain"
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "satpad_vault"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+# Selects consts::RECOVERY_ADDRESS (DECISIONS D9). Without it the build is a fork/dev build.
+mainnet = []
+
+[dependencies]
+anchor-lang = "1.2.0"
+anchor-spl = "1.2.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

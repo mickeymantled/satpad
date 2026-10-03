@@ -13,7 +13,7 @@ idl-ref/                 pump.fun / PumpSwap IDLs pinned from the SDKs on 2026-1
 ```
 
 ## Prereqs
-Node 22, pnpm 11, Solana CLI 4.3 (`$HOME/.local/share/solana/install/active_release/bin`), Rust + Anchor 1.2 (milestone 2+).
+Node 22, pnpm 11, Solana CLI 4.3 (`$HOME/.local/share/solana/install/active_release/bin`), Rust 1.89 + Anchor CLI 1.2 (`rustup`, `avm`).
 
 ## Quick start
 ```bash
@@ -21,4 +21,5 @@ pnpm install
 pnpm fork -- --detach      # local mainnet fork with pump.fun + wBTC quote
 pnpm fork:smoke            # create_v2 + buy_v2 quoted in wBTC
 pnpm test && pnpm typecheck && pnpm lint
+pnpm test:vault            # anchor build + LiteSVM program tests
 ```
