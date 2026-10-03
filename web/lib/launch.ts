@@ -2,7 +2,7 @@
 // Launch transaction (SPEC "Creation (one transaction)", DECISIONS D4/D14): create_v2 with creator = CoinFee PDA,
 // declare_coin (takes the launch fee and writes the payee choice; signed by user + mint), optional first buy. One v0
 // transaction over the pinned lookup table. The SOL → BTC swap, when needed, runs first as its own transaction.
-import { AddressLookupTableAccount, Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { AddressLookupTableAccount, ComputeBudgetProgram, Connection, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import { OnlinePumpSdk } from "@pump-fun/pump-sdk";
 import type { FeeConfig, Global, QuoteControl } from "@pump-fun/pump-sdk";
 import { DEFAULT_CREATOR_FEE_BPS, buildBuyV2, buildCreateV2, buildDeclareCoin, coinFeePda, configPda, decodeConfig, defaultFeeRecipients, quoteSatsForTokens, quoteTokensForSats, type FeeRecipients, type PayeeChoice } from "@satpad/sdk";
@@ -53,4 +53,38 @@ export function validateLaunchForm(f: { name: string; symbol: string; payeeKind:
   if (!f.image) return "Image is required";
   if (f.payeeKind === "wallet") { try { new PublicKey(f.payeeWallet.trim()); } catch { return "Payee wallet is not a valid address"; } }
   return null;
+}
+
+export const MAX_TX_BYTES = 1232;
+
+export interface LaunchPlan {
+  /** single: one tx with priority fee · single-no-fee: one tx, priority-fee instruction dropped (SPEC "Wallet and transactions") · split: launch tx, then the first buy as a second tx (DECISIONS D20). */
+  mode: "single" | "single-no-fee" | "split";
+  launch: TransactionInstruction[];
+  firstBuy: TransactionInstruction[];
+  bytes: number;
+}
+
+function v0Bytes(payer: PublicKey, ixs: TransactionInstruction[], tables: AddressLookupTableAccount[]): number {
+  try {
+    return new VersionedTransaction(new TransactionMessage({ payerKey: payer, recentBlockhash: PublicKey.default.toBase58(), instructions: ixs }).compileToV0Message(tables)).serialize().length;
+  } catch { return Number.MAX_SAFE_INTEGER; } // web3.js overruns its buffer before it can report a size
+}
+
+/**
+ * Fits the launch into 1232 bytes. A launch with a 32-byte name, a long metadata URI and a first buy can exceed the
+ * limit even over the lookup table (measured 1251–1283 bytes on the fork); the fallbacks are, in order: drop the
+ * priority-fee instruction, then send the first buy as its own transaction after the launch confirms.
+ * `createAndDeclare` = [create_v2, declare_coin]; `firstBuy` = [coin ATA, buy_v2] or [].
+ */
+export function planLaunch(payer: PublicKey, createAndDeclare: TransactionInstruction[], firstBuy: TransactionInstruction[], tables: AddressLookupTableAccount[]): LaunchPlan {
+  const budget = (withFee: boolean) => [ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }), ...(withFee ? [ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000_000 })] : [])];
+  const all = [...createAndDeclare, ...firstBuy];
+  const single = v0Bytes(payer, [...budget(true), ...all], tables);
+  if (single <= MAX_TX_BYTES) return { mode: "single", launch: all, firstBuy: [], bytes: single };
+  const noFee = v0Bytes(payer, [...budget(false), ...all], tables);
+  if (noFee <= MAX_TX_BYTES) return { mode: "single-no-fee", launch: all, firstBuy: [], bytes: noFee };
+  const split = v0Bytes(payer, [...budget(true), ...createAndDeclare], tables);
+  if (split > MAX_TX_BYTES) throw new Error(`launch transaction is ${split} bytes even without the first buy (> ${MAX_TX_BYTES})`);
+  return { mode: "split", launch: createAndDeclare, firstBuy, bytes: split };
 }

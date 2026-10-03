@@ -1,0 +1,85 @@
+# M5 task 8: the web app's Playwright suite against a real fork on the runner — fork validator, Postgres, migrations,
+# seeded coins, API (with the D17 dev faucet and the launch lookup table), indexer, Next.js dev server; Chromium only.
+# The suite includes the M5 definition of done (a SOL-only wallet launches and trades from the UI).
+name: web-e2e
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: web-e2e-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: satpad, POSTGRES_PASSWORD: satpad, POSTGRES_DB: satpad }
+        ports: ["55433:5432"]
+        options: --health-cmd "pg_isready -U satpad" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://satpad:satpad@127.0.0.1:55433/satpad
+      SOLANA_RPC_URL: http://127.0.0.1:8899
+      FORK_RPC_URL: https://api.mainnet-beta.solana.com
+      PRIORITY_FEE_MODE: fixed
+      SOLANA_VERSION: 4.1.2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.3.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Download vault build artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: verify-build.yml
+          name: satpad_vault-${{ github.sha }}
+          path: target/deploy
+          if_no_artifact_found: warn
+        continue-on-error: true
+      - name: Build vault if no artifact
+        if: hashFiles('target/deploy/satpad_vault.so') == ''
+        run: cargo build-sbf --tools-version v1.57 --arch v2 --manifest-path programs/satpad_vault/Cargo.toml
+      - name: Install Playwright Chromium
+        run: pnpm --filter @satpad/web exec playwright install --with-deps chromium
+      - name: Boot fork, seed, API, indexer
+        run: |
+          mkdir -p target/deploy && cp keys/satpad_vault-dev.json target/deploy/satpad_vault-keypair.json 2>/dev/null || true
+          scripts/local-fork.sh --detach
+          pnpm db:migrate
+          pnpm fork:seed --coins 3
+          pnpm fork:trade --rate-ms 300 --duration-s 10
+          LAUNCH_ALT=$(node -p "require('./scripts/fork-keys/seed.json').lookupTable")
+          PORT=8083 METADATA_BACKEND=api CORS_ORIGINS='*' LAUNCH_ALT="$LAUNCH_ALT" DEV_FAUCET_KEYPAIR="$PWD/scripts/fork-keys/wbtc-authority.json" \
+            nohup pnpm --filter @satpad/api exec tsx src/main.ts > api.log 2>&1 &
+          RPC_RATE_PER_SECOND=20 HOLDER_SWEEP_INTERVAL_MS=5000 POLL_INTERVAL_MS=1000 \
+            nohup pnpm --filter @satpad/indexer exec tsx src/main.ts > indexer.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8083/healthz && break; sleep 2; done
+          curl -sf http://127.0.0.1:8083/config
+      - name: Playwright
+        env:
+          NEXT_PUBLIC_DEV_SWAP: "1"
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8083
+          NEXT_PUBLIC_WS_URL: ws://127.0.0.1:8083/live
+          NEXT_PUBLIC_RPC_URL: http://127.0.0.1:8899
+        run: pnpm --filter @satpad/web e2e --reporter=list
+      - name: Production bundle must not contain the dev faucet (D17)
+        if: always()
+        run: pkill -f "next dev" || true; sleep 2; rm -rf web/.next && pnpm --filter @satpad/web build  # runs scripts/check-no-dev-swap.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-e2e-${{ github.sha }}
+          path: |
+            web/test-results
+            web/playwright-report
+            api.log
+            indexer.log
+          if-no-files-found: ignore

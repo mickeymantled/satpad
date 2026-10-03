@@ -9,7 +9,7 @@ import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, parseBtc, type PayeeChoice } from "@satpad/sdk";
 import { api } from "@/lib/api";
 import { btc, tokens as fmtTokens } from "@/lib/format";
-import { buildLaunchIxs, loadLaunchContext, quoteFirstBuy, validateLaunchForm, type LaunchContext } from "@/lib/launch";
+import { buildLaunchIxs, loadLaunchContext, planLaunch, quoteFirstBuy, validateLaunchForm, type LaunchContext, type LaunchPlan } from "@/lib/launch";
 import { useTx } from "@/lib/useTx";
 import { SwapPanel } from "./SwapPanel";
 import { TxPreviewModal } from "./TxPreviewModal";
@@ -28,6 +28,7 @@ export function LaunchForm() {
   const [phase, setPhase] = useState<"" | "uploading" | "sending" | "indexing">("");
   const [err, setErr] = useState("");
   const [launched, setLaunched] = useState<{ mint: string; signature: string } | null>(null);
+  const [plan, setPlan] = useState<LaunchPlan["mode"] | "">("");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
 
   useEffect(() => { loadLaunchContext(connection).then(setCtx).catch((e) => setCtxErr((e as Error).message)); }, [connection]);
@@ -58,14 +59,18 @@ export function LaunchForm() {
     try {
       setPhase("uploading");
       const meta = await api.uploadMetadata({ name: f.name.trim(), symbol: f.symbol.trim(), description: f.description, image: f.image, twitter: f.twitter, telegram: f.telegram, website: f.website, mint: mintKp.publicKey.toBase58() });
-      const ixs = await buildLaunchIxs({
-        user: tx.publicKey, mint: mintKp.publicKey, name: f.name.trim(), symbol: f.symbol.trim(), uri: meta.uri, payee, treasury: ctx.treasury, recipients: ctx.recipients, creatorFeeBps: ctx.creatorFeeBps,
-        ...(quote && quote.tokens > 0n && { firstBuy: { tokenAmount: quote.tokens, maxQuoteIn: quote.cost + quote.cost / 100n + 1n } }),
-      });
+      const base = { user: tx.publicKey, mint: mintKp.publicKey, name: f.name.trim(), symbol: f.symbol.trim(), uri: meta.uri, payee, treasury: ctx.treasury, recipients: ctx.recipients, creatorFeeBps: ctx.creatorFeeBps };
+      const createAndDeclare = await buildLaunchIxs(base);
+      const firstBuy = quote && quote.tokens > 0n ? (await buildLaunchIxs({ ...base, firstBuy: { tokenAmount: quote.tokens, maxQuoteIn: quote.cost + quote.cost / 100n + 1n } })).slice(createAndDeclare.length) : [];
+      // SPEC "Creation (one transaction)" + "Wallet and transactions": one tx when it fits; drop the priority fee near
+      // the limit; as a last resort (D20) the first buy follows as its own transaction after the launch confirms.
+      const planned = planLaunch(tx.publicKey, createAndDeclare, firstBuy, [ctx.table]);
+      setPlan(planned.mode);
       setPhase("sending");
-      const res = await tx.send(`Launch ${f.symbol.trim()}`, ixs, [ctx.table], [mintKp]);
+      const res = await tx.send(`Launch ${f.symbol.trim()}`, planned.launch, [ctx.table], [mintKp], { noPriorityFee: planned.mode === "single-no-fee" });
       const mint = mintKp.publicKey.toBase58();
       setLaunched({ mint, signature: res.signature });
+      if (planned.firstBuy.length) await tx.send(`First buy ${f.symbol.trim()}`, planned.firstBuy, [ctx.table]);
       setPhase("indexing");
       for (let i = 0; i < 90; i++) { // wait for the indexer, then open the coin page
         if (await api.coin(mint, { cache: "no-store" }).then(() => true).catch(() => false)) { router.push(`/coin/${mint}`); return; }
@@ -96,7 +101,7 @@ export function LaunchForm() {
         {([["me", "Me — this wallet"], ["wallet", "Another wallet"], ["holders", "Holders — paid pro rata, permanent"]] as [PayeeKind, string][]).map(([k, label]) => (
           <label key={k} className="flex items-center gap-2"><input type="radio" name="payee" checked={f.payeeKind === k} onChange={() => setF((p) => ({ ...p, payeeKind: k }))} data-testid={`launch-payee-${k}`} />{label}</label>
         ))}
-        {f.payeeKind === "wallet" && <input className="input w-full num" placeholder="wallet address" value={f.payeeWallet} onChange={set("payeeWallet")} data-testid="launch-payee-wallet" />}
+        {f.payeeKind === "wallet" && <input className="input w-full num" placeholder="wallet address" value={f.payeeWallet} onChange={set("payeeWallet")} data-testid="launch-payee-address" />}
       </fieldset>
       <div className="space-y-1 text-sm">
         <label className="block"><span>First buy in BTC <span style={{ color: "var(--muted) " }}>(optional)</span></span><input className="input w-full num" inputMode="decimal" placeholder="0.0001" value={f.firstBuy} onChange={set("firstBuy")} data-testid="launch-first-buy" /></label>
@@ -108,6 +113,7 @@ export function LaunchForm() {
       {ctx && <div className="text-xs num" style={{ color: "var(--muted)" }}>Launch fee {sol(ctx.launchFeeLamports)} to the treasury · creator fee {ctx.creatorFeeBps / 100}% in BTC · metadata via {ctx.metadataBackend === "pump" ? "pump.fun IPFS" : "satpad"}</div>}
       {(err || tx.error) && <div className="text-xs" style={{ color: "var(--red)" }} data-testid="tx-error">{err || tx.error}{tx.logs.length > 0 && <pre className="whitespace-pre-wrap text-[10px]" data-testid="tx-logs">{tx.logs.filter((l) => l.includes("Program log") || l.includes("failed")).slice(-12).join("\n")}</pre>}</div>}
       {(phase || tx.status) && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="tx-status">{phase === "indexing" ? "launched — waiting for the indexer" : phase === "uploading" ? "uploading metadata" : tx.status}</div>}
+      {plan && plan !== "single" && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="launch-plan" data-mode={plan}>{plan === "single-no-fee" ? "At the size limit: this launch runs without a priority fee." : "At the size limit: the first buy follows as a second transaction right after the launch confirms."}</div>}
       {launched && <div className="text-xs num" data-testid="launch-done" data-mint={launched.mint} data-signature={launched.signature}>Mint {launched.mint}</div>}
       <button className="btn btn-accent w-full" disabled={!tx.connected || !ctx || busy} onClick={submit} data-testid="launch-submit">{tx.connected ? "Simulate and launch" : "Connect a wallet to launch"}</button>
     </div>

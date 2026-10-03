@@ -9,7 +9,9 @@ export interface SwapResult { signature: string; sats: bigint }
 export interface SolSwapper { kind: "jupiter" | "dev-faucet"; quote(lamports: bigint): Promise<bigint>; swap(rpc: SwapRpc, wallet: WalletLike, lamports: bigint, onStatus?: (s: string) => void): Promise<SwapResult> }
 
 export async function loadSolSwapper(): Promise<SolSwapper | null> {
-  if (process.env["NEXT_PUBLIC_DEV_SWAP"] === "1") {
+  // Dot access on purpose: Next inlines `process.env.NEXT_PUBLIC_*` only for this exact form, which is what lets the
+  // bundler drop the branch — and the devSwap chunk — from production builds (D17, checked by scripts/check-no-dev-swap.sh).
+  if ((process.env as { NEXT_PUBLIC_DEV_SWAP?: string }).NEXT_PUBLIC_DEV_SWAP === "1") {
     const dev = await import("./devSwap");
     const info = await dev.devFaucetInfo();
     if (!info?.enabled) return null;

@@ -1,0 +1,6 @@
+{
+  "name": "@satpad/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": { "test": "echo 'web: no tests until milestone 5' && exit 0" }
+}

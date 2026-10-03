@@ -45,7 +45,7 @@ export interface WalletLike { publicKey: PublicKey; signTransaction<T extends Tr
 export type Rpc = Pick<Connection, "getLatestBlockhash" | "simulateTransaction" | "sendRawTransaction" | "confirmTransaction">;
 
 export interface Preview { instructions: ReturnType<typeof describeInstruction>[]; unitsConsumed: number; priorityFeeMicroLamports: bigint; sizeBytes: number; logs: string[] }
-export interface SendOptions { computeUnitLimit?: number; maxAttempts?: number; tables?: AddressLookupTableAccount[]; /** Extra keypairs that must sign after the wallet (a launch's new mint keypair). */ extraSigners?: Signer[]; onPreview?: (p: Preview) => Promise<boolean> | boolean; onStatus?: (s: string) => void; fetchFee?: () => Promise<bigint> }
+export interface SendOptions { computeUnitLimit?: number; maxAttempts?: number; /** Omit the compute-unit-price instruction (SPEC: a launch near the size limit may run without a priority fee). */ noPriorityFee?: boolean; tables?: AddressLookupTableAccount[]; /** Extra keypairs that must sign after the wallet (a launch's new mint keypair). */ extraSigners?: Signer[]; onPreview?: (p: Preview) => Promise<boolean> | boolean; onStatus?: (s: string) => void; fetchFee?: () => Promise<bigint> }
 
 export async function fetchPriorityFee(): Promise<bigint> {
   try { const r = await fetch(`${env.apiUrl}/fees/priority`); const j = (await r.json()) as { microLamportsPerCu: string }; return BigInt(j.microLamportsPerCu); } catch { return 1_000n; }
@@ -61,7 +61,7 @@ export async function sendWithWallet(rpc: Rpc, wallet: WalletLike, ixs: Transact
   let lastErr: Error | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const fee = bump(baseFee, attempt);
-    const all = [ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Number(fee) }), ...ixs];
+    const all = [ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }), ...(opts.noPriorityFee ? [] : [ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Number(fee) })]), ...ixs];
     const { blockhash, lastValidBlockHeight } = await rpc.getLatestBlockhash("confirmed");
     let tx: Transaction | VersionedTransaction;
     if (opts.tables?.length) tx = new VersionedTransaction(new TransactionMessage({ payerKey: wallet.publicKey, recentBlockhash: blockhash, instructions: all }).compileToV0Message(opts.tables));
