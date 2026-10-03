@@ -5,7 +5,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-concurrency: { group: keeper-reconcile-${{ github.ref }}, cancel-in-progress: true }
+concurrency:
+  group: keeper-reconcile-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   reconcile:
     runs-on: ubuntu-latest
