@@ -32,6 +32,17 @@
   split at u64::MAX and bound edges.
 - `scripts/build-vault.sh`: `anchor build` + `cargo build-sbf --arch v2` (D11).
 
+- Task 4: `instructions/payee.rs` — `pay_from_pot` (Config-signed transfer out of a pot). `pay_payee`: anyone, full
+  `PayeePot` to `ATA(coin.payee)`, which must exist; refuses Holders-mode coins. `ChangePayee` accounts shared by
+  `redirect_payee(new_payee)` and `set_holder_rewards`: signer must be `coin.payee`; the old payee's ATA is paid in the
+  same instruction (can't block a change by withholding); new payee must be non-default and different; Holders sets
+  `payee = default`, mode Holders, and nothing can change it afterwards.
+- Tests: `payee.test.ts` (12): pay full pot / anyone / empty no-op / missing ATA refused / wrong ATA refused /
+  settle→pot→payee; redirect only by current payee (deployer, admin, stranger refused), atomic old-payee payout then
+  new payee receives later settles, default and same-payee refused, missing old ATA refused, `Wallet(pubkey)` payee
+  controls from launch; holders switch pays old payee, is permanent, `pay_payee` refuses, settle routes to `RewardsPot`,
+  third party refused.
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -41,5 +52,5 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 4–9 (STATUS.md).
+- Tasks 5–9 (STATUS.md).
 - VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.

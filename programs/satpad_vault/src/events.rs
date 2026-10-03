@@ -35,3 +35,26 @@ pub struct Settled {
     pub deployer_destination: Pubkey,
     pub split: Split,
 }
+
+#[event]
+pub struct PayeePaid {
+    pub mint: Pubkey,
+    pub payee: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct PayeeRedirected {
+    pub mint: Pubkey,
+    pub old_payee: Pubkey,
+    pub new_payee: Pubkey,
+    /// Paid to the old payee in the same instruction.
+    pub paid_out: u64,
+}
+
+#[event]
+pub struct HolderRewardsSet {
+    pub mint: Pubkey,
+    pub old_payee: Pubkey,
+    pub paid_out: u64,
+}

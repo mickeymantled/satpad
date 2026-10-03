@@ -38,4 +38,10 @@ pub enum VaultError {
     Paused,
     #[msg("coin is paused")]
     CoinPaused,
+    #[msg("signer is not the coin's current payee")]
+    NotPayee,
+    #[msg("coin is in holder-rewards mode; nobody controls the deployer share")]
+    HoldersMode,
+    #[msg("new payee must be a real, different wallet")]
+    InvalidPayee,
 }

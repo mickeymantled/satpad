@@ -34,4 +34,19 @@ pub mod satpad_vault {
     pub fn settle<'info>(ctx: Context<'info, Settle<'info>>) -> Result<()> {
         instructions::settle::handle_settle(ctx)
     }
+
+    /// Transfers the whole `PayeePot` to the current payee's quote ATA. Anyone can call; never creates the ATA.
+    pub fn pay_payee<'info>(ctx: Context<'info, PayPayee<'info>>) -> Result<()> {
+        instructions::payee::handle_pay_payee(ctx)
+    }
+
+    /// Current payee hands the deployer share to `new_payee`, receiving whatever is waiting first. Irreversible.
+    pub fn redirect_payee<'info>(ctx: Context<'info, ChangePayee<'info>>, new_payee: Pubkey) -> Result<()> {
+        instructions::payee::handle_redirect_payee(ctx, new_payee)
+    }
+
+    /// Current payee makes the deployer share pay holders forever, receiving whatever is waiting first.
+    pub fn set_holder_rewards<'info>(ctx: Context<'info, ChangePayee<'info>>) -> Result<()> {
+        instructions::payee::handle_set_holder_rewards(ctx)
+    }
 }
