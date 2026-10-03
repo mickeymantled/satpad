@@ -1,6 +1,43 @@
 {
   "name": "@satpad/web",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "scripts": { "test": "echo 'web: no tests until milestone 5' && exit 0" }
+  "scripts": {
+    "dev": "next dev --turbopack -p 3000",
+    "build": "next build && scripts/check-no-dev-swap.sh",
+    "start": "next start -p 3000",
+    "lint": "eslint",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "next": "15.5.27",
+    "@satpad/sdk": "workspace:*",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/spl-token": "^0.4.9",
+    "@pump-fun/pump-sdk": "2.0.0",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "lightweight-charts": "^5.0.0",
+    "bn.js": "^5.2.5",
+    "@solana/wallet-adapter-unsafe-burner": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.27",
+    "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.50.0",
+    "vitest": "^3.0.0",
+    "@types/bn.js": "^5.2.0"
+  }
 }

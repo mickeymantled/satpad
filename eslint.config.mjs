@@ -3,7 +3,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/target/**", ".fork-ledger/**", "idl-ref/**"] },
+  { ignores: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/target/**", ".fork-ledger/**", "idl-ref/**", "web/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

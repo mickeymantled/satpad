@@ -12,3 +12,6 @@ test-ledger/
 .DS_Store
 .fork-ledger/
 scripts/fork-keys/
+web/test-results/
+web/playwright-report/
+web/.next/

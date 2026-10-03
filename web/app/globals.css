@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* Dark theme tokens (SPEC "Frontend": dark theme, every number in BTC with sats and USD alongside). */
+:root {
+  --bg: #0b0d12;
+  --bg-elev: #12151c;
+  --bg-hover: #181c25;
+  --border: #242a36;
+  --text: #e8ecf3;
+  --muted: #8b94a7;
+  --accent: #f7931a;      /* bitcoin orange */
+  --accent-soft: #3a2a14;
+  --green: #35c27a;
+  --red: #e5484d;
+  --dust: #8b94a7;
+  --mining: #f7931a;
+  --block: #35c27a;
+}
+html { color-scheme: dark; }
+body { background: var(--bg); color: var(--text); font-feature-settings: "tnum" 1; }
+a { color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; }
+.badge { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .5rem; border-radius: 999px; font-size: .75rem; border: 1px solid var(--border); }
+.badge-dust { color: var(--dust); } .badge-mining { color: var(--mining); } .badge-block { color: var(--block); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .5rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-elev); }
+.btn:hover { background: var(--bg-hover); }
+.btn-accent { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
+.btn-accent:hover { filter: brightness(1.08); }
+.input { width: 100%; padding: .55rem .75rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }

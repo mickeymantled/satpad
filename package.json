@@ -9,7 +9,7 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck && tsc -p tsconfig.json",
-    "lint": "eslint .",
+    "lint": "eslint . && pnpm --filter @satpad/web lint",
     "fork": "scripts/local-fork.sh",
     "fork:smoke": "tsx scripts/fork-smoke.ts",
     "fork:m1": "tsx scripts/fork-create-and-buy.ts",
@@ -32,7 +32,9 @@
     "fixtures:capture": "tsx scripts/capture-fixtures.ts",
     "fork:check:rolling": "scripts/fork-rolling-check.sh",
     "indexer": "pnpm --filter @satpad/indexer start",
-    "fork:api-check": "tsx scripts/fork-api-check.ts"
+    "fork:api-check": "tsx scripts/fork-api-check.ts",
+    "web": "pnpm --filter @satpad/web dev",
+    "e2e": "pnpm --filter @satpad/web e2e"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*",

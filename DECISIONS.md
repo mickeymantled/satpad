@@ -93,7 +93,7 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 
 ## D18 — 2026-10-03 — M5 — Coin metadata: pump.fun IPFS upload primary (if V16 confirms), Postgres `POST /metadata` fallback
 **Decision (human):** run V16 first. If pump.fun's IPFS upload endpoint accepts third-party coins, use it as primary so the metadata URI is what explorers and pump.fun expect and survives Satpad downtime; keep the API's Postgres-backed `POST /metadata` as fallback and as the fork path. Which backend is active is recorded in runtime config (API `GET /config`, env `METADATA_BACKEND=pump|api`), not hardcoded. (Interpretation: "Config" = runtime config served by the API, not the on-chain `Config` account, which has no such field.)
-**Status:** approved by human 2026-10-03; backend choice pending V16.
+**Status:** approved by human 2026-10-03. V16 result: pump.fun's endpoint works unauthenticated but is undocumented, server-side only (no CORS) and reportedly unsupported → it is the primary backend (`METADATA_BACKEND=pump`), called by the API on the launcher's behalf, with automatic fallback to the Postgres backend on any non-200; the fork uses `METADATA_BACKEND=api`. The API's `GET /config` reports the active backend. Stored `uri` for the pump backend is the returned `metadataUri` verbatim.
 
 ## D19 — 2026-10-03 — M5 — Web dependencies approved
 `next@15`, `react@19`, `@solana/wallet-adapter-{base,react,react-ui,wallets}`, `tailwindcss`, `lightweight-charts` (human: a hand-rolled chart is not worth maintaining), `@playwright/test` for e2e.
