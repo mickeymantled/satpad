@@ -10,3 +10,5 @@ dist/
 keys/
 test-ledger/
 .DS_Store
+.fork-ledger/
+scripts/fork-keys/
