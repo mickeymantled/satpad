@@ -86,3 +86,17 @@ pub struct Coin {
     pub payee_pot_bump: u8,
     pub rewards_pot_bump: u8,
 }
+
+/// `["rewards_run", mint, run_index as u64 LE]` (DECISIONS D8). One per holder-rewards release; the snapshot hash is
+/// written here before the pot moves, so anyone can audit who was paid.
+#[account]
+#[derive(InitSpace)]
+pub struct RewardsRun {
+    pub mint: Pubkey,
+    pub run_index: u64,
+    pub snapshot_sha256: [u8; 32],
+    pub slot: u64,
+    pub amount_released: u64,
+    pub timestamp: i64,
+    pub bump: u8,
+}

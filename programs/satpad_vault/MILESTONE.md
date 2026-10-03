@@ -43,6 +43,17 @@
   controls from launch; holders switch pays old payee, is permanent, `pay_payee` refuses, settle routes to `RewardsPot`,
   third party refused.
 
+- Task 5: `state.rs` `RewardsRun` (mint, run_index, snapshot_sha256, slot, amount_released, timestamp).
+  `instructions/rewards.rs` `release_rewards(snapshot_sha256)`: signer = `Config.rewards_wallet`; coin must be Holders
+  mode; pot ≥ `REWARDS_MIN_RELEASE` (D12); ≥ `REWARDS_RUN_MIN_INTERVAL` since the last run; `RewardsRun` is `init` at
+  `["rewards_run", mint, rewards_run_count LE]` so an index can neither skip nor replay; whole pot → `ATA(rewards_wallet)`.
+  `instructions/lp.rs` `draw_lp(amount)`: signer = `Config.lp_wallet`; `0 < amount ≤ lp_draw_max`; ≥ `lp_draw_interval`
+  since `last_lp_draw_ts`; only to `ATA(lp_wallet)`. Nothing else moves `LpPot`.
+- Tests: `rewards_lp.test.ts` (11): RewardsRun fields + counter + timestamps, 3599 s refused / 3600 s allowed with
+  run_index 1 at a distinct PDA, below-min and empty pot, Wallet-mode coin, admin/LP/treasury/user signers, foreign ATA,
+  wrong run index; draw within max + timestamp, above max, zero, 299 s refused / 300 s allowed, every other key and any
+  other destination, stolen-key bound.
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -52,5 +63,5 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 5–9 (STATUS.md).
+- Tasks 6–9 (STATUS.md).
 - VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.

@@ -49,4 +49,16 @@ pub mod satpad_vault {
     pub fn set_holder_rewards<'info>(ctx: Context<'info, ChangePayee<'info>>) -> Result<()> {
         instructions::payee::handle_set_holder_rewards(ctx)
     }
+
+    /// Rewards wallet moves a Holders-mode coin's `RewardsPot` out for one run, after writing the snapshot hash.
+    /// At most once per `REWARDS_RUN_MIN_INTERVAL` per coin.
+    pub fn release_rewards<'info>(ctx: Context<'info, ReleaseRewards<'info>>, snapshot_sha256: [u8; 32]) -> Result<()> {
+        instructions::rewards::handle_release_rewards(ctx, snapshot_sha256)
+    }
+
+    /// LP wallet draws up to `Config.lp_draw_max` from `LpPot`, at least `Config.lp_draw_interval` after the last draw.
+    /// The only instruction that moves BTC out of `LpPot`.
+    pub fn draw_lp<'info>(ctx: Context<'info, DrawLp<'info>>, amount: u64) -> Result<()> {
+        instructions::lp::handle_draw_lp(ctx, amount)
+    }
 }

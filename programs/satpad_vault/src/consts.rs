@@ -21,6 +21,9 @@ pub const LP_DRAW_MAX_CAP: u64 = 500_000;
 pub const MIN_LP_DRAW_INTERVAL: i64 = 300;
 /// `release_rewards` at most once per this many seconds per coin.
 pub const REWARDS_RUN_MIN_INTERVAL: i64 = 3600;
+/// `release_rewards` refuses a pot below this many quote base units (dust guard; the keeper's own threshold is the
+/// $25 Pyth rule in SPEC "Holder rewards, keeper side"). DECISIONS D12.
+pub const REWARDS_MIN_RELEASE: u64 = 1_000;
 
 /// Where `recover` sends a paused coin's `CoinFee` balance. A constant, never a Config field, so no key can redirect
 /// it. The `mainnet` cargo feature selects the Squads vault address; the default is the fork/dev keypair in keys/.

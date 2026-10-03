@@ -44,4 +44,20 @@ pub enum VaultError {
     HoldersMode,
     #[msg("new payee must be a real, different wallet")]
     InvalidPayee,
+    #[msg("signer is not Config.rewards_wallet")]
+    NotRewardsWallet,
+    #[msg("signer is not Config.lp_wallet")]
+    NotLpWallet,
+    #[msg("rewards pot below the minimum release amount")]
+    RewardsPotBelowMin,
+    #[msg("last rewards run is less than REWARDS_RUN_MIN_INTERVAL seconds old")]
+    RewardsTooSoon,
+    #[msg("coin is not in holder-rewards mode")]
+    NotHoldersMode,
+    #[msg("draw exceeds Config.lp_draw_max")]
+    LpDrawTooLarge,
+    #[msg("last LP draw is less than Config.lp_draw_interval seconds old")]
+    LpDrawTooSoon,
+    #[msg("amount must be greater than zero")]
+    ZeroAmount,
 }

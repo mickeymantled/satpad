@@ -58,3 +58,20 @@ pub struct HolderRewardsSet {
     pub old_payee: Pubkey,
     pub paid_out: u64,
 }
+
+#[event]
+pub struct RewardsReleased {
+    pub mint: Pubkey,
+    pub run_index: u64,
+    pub snapshot_sha256: [u8; 32],
+    pub amount: u64,
+    pub slot: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct LpDrawn {
+    pub amount: u64,
+    pub timestamp: i64,
+    pub lp_pot_remaining: u64,
+}

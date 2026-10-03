@@ -1,8 +1,12 @@
 pub mod declare_coin;
 pub mod initialize;
+pub mod lp;
 pub mod payee;
+pub mod rewards;
 pub mod settle;
 pub use declare_coin::*;
 pub use initialize::*;
+pub use lp::*;
 pub use payee::*;
+pub use rewards::*;
 pub use settle::*;

@@ -58,3 +58,7 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 **Finding:** With the identical source, the LiteSVM 1.5 suite passes 28/28 on SBPF v1 and v2 builds and fails on v3 (and v0) with corrupted stack temporaries (a `Pubkey` garbage past byte 8 in a seeds check; an access violation in `settle`). anchor-syn 1.2's constraint codegen was read and is inline, so the program's `mint.key().as_ref()` idiom is sound; the VM is at fault.
 **Decision:** `scripts/build-vault.sh` = `anchor build` (IDL) + `cargo build-sbf --arch v2`. `pnpm test:vault` uses it. Task 9 (DoD on the real `solana-test-validator` 4.3 fork) must also run once with `SBPF_ARCH=v3` so the default binary is exercised on the real runtime. Which SBPF version mainnet accepts for deploy is VERIFIED V14 (open) and decides the M10 build arch.
 **Status:** in effect (test-infrastructure choice; no spec deviation).
+
+## D12 — 2026-10-02 — M2 — `release_rewards` "pot above min" is a program constant `REWARDS_MIN_RELEASE = 1_000` sats
+**Decision:** SPEC lists "pot above min" as a `release_rewards` requirement but defines the $25 (Pyth) threshold only on the keeper side. The program cannot read USD, so it enforces a fixed dust guard of 1,000 base units (~$1 at $100k/BTC); the keeper applies the $25 rule before calling. Raising the constant is a program upgrade.
+**Status:** proposed (value); mechanism in effect.
