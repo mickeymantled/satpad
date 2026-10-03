@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 2 — Vault program (M1 approved by human 2026-10-02)
-**Last completed step:** M2 task 1 — Anchor 1.2 workspace, `consts.rs` (bounds, `RECOVERY_ADDRESS` behind `mainnet` feature with guard test, `DEV_KEYS`), `Config` + `initialize` + `LpPot`, `Initialized` event; LiteSVM harness (D10) with 6 tests. `pnpm test:vault` green.
-**Next step:** M2 task 2 — `declare_coin`.
+**Last completed step:** M2 task 2 — `declare_coin`: parses pump's `BondingCurve` (`pump.rs`, layout from VERIFIED V3), requires creator == CoinFee, quote == Config.quote_mint, fee bps == Config.creator_fee_bps (D9), no holder-reward/mayhem; creates CoinFee wBTC ATA + PayeePot + RewardsPot; launch fee; admin-only `treasury_only`; `Declared` event. 12 tests (18 total vault).
+**Next step:** M2 task 3 — `settle`.
 **Blockers:** none. Note for M2 planning: M2's spec DoD says "a devnet coin's creator fee settles four ways" — read as local fork per D1.
 
 ## Toolchain (installed 2026-10-02)
@@ -53,7 +53,7 @@ See `packages/sdk/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V11.
 
 **Tasks (one commit each, LiteSVM test with every task):**
 
-Done: task 1 — (this commit)
+Done: task 1 — `8a5086f` · task 2 — (this commit)
 1. Anchor 1.2 workspace (`Anchor.toml`, `programs/satpad_vault`), constants module, `Config` + `initialize` (bounds-checked split, wallets, quote mint + decimals read from the mint account, creator_fee_bps, launch fee), `Initialized` event. Bankrun harness in `tests/vault/` that loads the `.so`, runs `initialize`, decodes Config with the IDL. SDK: `programs/satpad_vault/idl` → `packages/sdk/src/vault/` generated types + `configPda` wiring.
 2. `declare_coin`: `Coin`, `CoinFee` ATA, `PayeePot`, `RewardsPot`; pump `BondingCurve` validation; launch fee transfer; `treasury_only` admin path; `Declared` event. Tests: happy path with a fake BondingCurve account injected into bankrun, refuses second declaration / wrong creator / non-quote mint / fee bps ≠ Config.creator_fee_bps / holder-reward curve / non-admin treasury_only.
 3. `settle`: four-way split (D7), treasury_only path, paused refusal (global and per-coin), dust (0 balance) no-op, `Settled` event. Tests: split math at every bound and edge amount (0, 1, 3, 9999, u64::MAX), parity with `@satpad/sdk` `splitFee` across 1,000 random amounts.

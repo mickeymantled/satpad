@@ -7,6 +7,7 @@ import { Connection, Keypair, PublicKey, SystemProgram, Transaction, Transaction
 import { AnchorProvider, BorshCoder, Program, type Idl } from "@coral-xyz/anchor";
 import { LiteSVM, type FailedTransactionMetadata, type TransactionMetadata } from "litesvm";
 import { address, getTransactionDecoder, lamports } from "@solana/kit";
+import { unpackAccount, type Account as TokenAccount } from "@solana/spl-token";
 import { MINT_SIZE, TOKEN_PROGRAM_ID, createInitializeMint2Instruction, getMinimumBalanceForRentExemptMint } from "@solana/spl-token";
 import { SATPAD_VAULT_PROGRAM_ID } from "@satpad/sdk";
 
@@ -25,6 +26,10 @@ export class VaultSvm {
     this.svm.addProgramFromFile(address(SATPAD_VAULT_PROGRAM_ID.toBase58()), SO);
     this.payer = Keypair.generate();
     this.airdrop(this.payer.publicKey, 100n * 1_000_000_000n);
+    // LiteSVM starts at unix time 0; give it a real-looking clock so timestamps and intervals behave.
+    const clock = this.svm.getClock();
+    clock.unixTimestamp = 1_750_000_000n;
+    this.svm.setClock(clock);
     const provider = new AnchorProvider(new Connection("http://127.0.0.1:1"), { publicKey: this.payer.publicKey, signTransaction: () => Promise.reject(), signAllTransactions: () => Promise.reject() }, {});
     this.program = new Program(IDL, provider);
     this.coder = new BorshCoder(IDL);
@@ -38,12 +43,14 @@ export class VaultSvm {
   send(ixs: TransactionInstruction[], signers: Keypair[]): TransactionMetadata {
     const tx = new Transaction().add(...ixs);
     tx.feePayer = signers[0]!.publicKey;
+    // Fresh blockhash per send so byte-identical retries are not rejected as duplicate signatures.
+    this.svm.expireBlockhash();
     tx.recentBlockhash = this.svm.latestBlockhash();
     tx.sign(...signers);
     const res = this.svm.sendTransaction(getTransactionDecoder().decode(tx.serialize()));
     if (isFailed(res)) {
       const logs = res.meta().logs().join("\n");
-      throw new SvmError(`${res.err()}\n${logs}`, logs);
+      throw new SvmError(`${JSON.stringify(res.err())}\n${logs}`, logs);
     }
     return res;
   }
@@ -88,6 +95,22 @@ export class VaultSvm {
       createInitializeMint2Instruction(mint.publicKey, decimals, this.payer.publicKey, null, TOKEN_PROGRAM_ID),
     ], [this.payer, mint]);
     return mint.publicKey;
+  }
+
+  /** Writes a raw account (any owner, loaded program or not). Used to inject pump.fun state. */
+  setAccount(pk: PublicKey, owner: PublicKey, data: Uint8Array, lam = 10_000_000n): void {
+    this.svm.setAccount({ address: address(pk.toBase58()), programAddress: address(owner.toBase58()), data, lamports: lamports(lam), executable: false, space: BigInt(data.length) });
+  }
+
+  lamportsOf(pk: PublicKey): bigint {
+    const a = this.svm.getAccount(address(pk.toBase58()));
+    return a.exists ? BigInt(a.lamports) : 0n;
+  }
+
+  tokenAccount(pk: PublicKey): TokenAccount {
+    const data = this.accountData(pk);
+    if (!data) throw new Error(`token account ${pk.toBase58()} not found`);
+    return unpackAccount(pk, { data, owner: TOKEN_PROGRAM_ID, executable: false, lamports: 0 } as never, TOKEN_PROGRAM_ID);
   }
 
   /** Current unix timestamp on the SVM clock. */

@@ -10,6 +10,17 @@
 - Tests: `tests/vault/harness.ts` (LiteSVM, D10) + `initialize.test.ts` (6): every Config field, LpPot ownership,
   decimals read from mint, run-once, split bounds at the exact edges, LP caps, creator fee range.
 
+- Task 2: `src/pump.rs` read-only `BondingCurve` view (discriminator + 125-byte layout pinned from `idl-ref/pump.json`).
+  `state.rs` `Coin`, `PayeeMode { Wallet, Holders }`, `PayeeChoice { Me, Wallet(Pubkey), Holders }`. `instructions/declare_coin.rs`:
+  signed by launcher + mint keypair; bonding curve must be pump's PDA for the mint, pump-owned, with `creator == CoinFee`,
+  `quote_mint == Config.quote_mint`, `creator_fee_bps == Config.creator_fee_bps` (exact, D9), not holder-reward, not mayhem;
+  inits `Coin`, `ATA(CoinFee, quote)`, `PayeePot`, `RewardsPot` (pots: authority = Config); transfers launch fee to
+  `Config.treasury`; `treasury_only` only when launcher == admin; emits `Declared`.
+- Tests: `tests/vault/fixtures.ts` (initialized Config, `injectCurve` writes a pump-owned BondingCurve into LiteSVM),
+  `declare_coin.test.ts` (12): happy path incl. fee ATA/pots/launch fee, Me/Wallet/Holders, second declaration, missing mint
+  signature, wrong creator, SOL-quoted and foreign-quoted curves, fee bps 0/99/101/300, holder-reward, mayhem, missing /
+  wrong-owner / bad-discriminator curve, wrong treasury, foreign quote mint account, treasury_only non-admin, zero launch fee.
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -19,4 +30,4 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 2–9 (STATUS.md).
+- Tasks 3–9 (STATUS.md).

@@ -4,6 +4,7 @@ pub mod consts;
 pub mod errors;
 pub mod events;
 pub mod instructions;
+pub mod pump;
 pub mod state;
 
 use anchor_lang::prelude::*;
@@ -21,5 +22,11 @@ pub mod satpad_vault {
     /// Creates `Config` and `LpPot`. Once.
     pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
         instructions::initialize::handle_initialize(ctx, args)
+    }
+
+    /// Registers a pump.fun coin whose creator is this program's `CoinFee` PDA. Signed by the launcher and the new
+    /// mint keypair, so only the launch transaction can write the payee choice, once. Collects the launch fee.
+    pub fn declare_coin(ctx: Context<DeclareCoin>, payee: PayeeChoice, treasury_only: bool) -> Result<()> {
+        instructions::declare_coin::handle_declare_coin(ctx, payee, treasury_only)
     }
 }

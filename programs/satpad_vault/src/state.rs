@@ -46,3 +46,43 @@ pub struct Config {
     pub bump: u8,
     pub lp_pot_bump: u8,
 }
+
+/// Who receives the deployer share. `Holders` is permanent (SPEC "Payee modes").
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
+pub enum PayeeMode {
+    Wallet,
+    Holders,
+}
+
+/// Deployer's choice at launch, written once by `declare_coin`.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PayeeChoice {
+    /// The launching wallet.
+    Me,
+    /// Any wallet; it controls the share from the start.
+    Wallet(Pubkey),
+    /// Pro rata to holders, forever.
+    Holders,
+}
+
+/// `["coin", mint]`.
+#[account]
+#[derive(InitSpace)]
+pub struct Coin {
+    pub mint: Pubkey,
+    pub deployer: Pubkey,
+    /// Current payee when `payee_mode == Wallet`; ignored for `Holders`.
+    pub payee: Pubkey,
+    pub payee_mode: PayeeMode,
+    pub paused: bool,
+    pub created_at: i64,
+    pub declared: bool,
+    /// $SATPAD only: 100% of the creator fee to treasury. Admin-set at declaration, never changed.
+    pub treasury_only: bool,
+    pub last_rewards_run_ts: i64,
+    pub rewards_run_count: u64,
+    pub bump: u8,
+    pub coin_fee_bump: u8,
+    pub payee_pot_bump: u8,
+    pub rewards_pot_bump: u8,
+}

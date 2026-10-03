@@ -18,4 +18,20 @@ pub enum VaultError {
     Overflow,
     #[msg("wrong quote mint")]
     WrongQuoteMint,
+    #[msg("bonding curve account data is not a pump.fun BondingCurve")]
+    BadCurveData,
+    #[msg("bonding curve creator is not this coin's CoinFee PDA")]
+    WrongCurveCreator,
+    #[msg("bonding curve quote mint is not the configured BTC quote mint")]
+    WrongCurveQuoteMint,
+    #[msg("bonding curve creator_fee_bps does not equal Config.creator_fee_bps")]
+    CreatorFeeMismatch,
+    #[msg("holder-reward curves cannot be registered: pump.fun owns their creator")]
+    HolderRewardCurve,
+    #[msg("mayhem-mode curves cannot be registered")]
+    MayhemCurve,
+    #[msg("signer is not the admin")]
+    NotAdmin,
+    #[msg("treasury account does not match Config.treasury")]
+    WrongTreasury,
 }
