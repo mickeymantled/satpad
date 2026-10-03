@@ -24,6 +24,15 @@
   array else 400, 200 acked synchronously, async drain shared by callers, malformed elements counted and ignored).
   `TxSink.handle(tx) → boolean` is the dedupe contract the processor implements. Tests (6).
 
+- Task 4: `src/process.ts` `Processor` (implements `TxSink`): one DB transaction per signature with `processed_tx` as
+  the idempotency gate; `Declared` registers the coin (name/symbol/uri from the same tx's `CreateEvent`); trades only
+  for registered mints → `trades` (price scaled 1e12), `coins` counters/reserves/`last_trade_at`, stage dust→mining at
+  10 buys (block sticky); holders upserted from post balances with a slot guard, bonding curve and pool excluded,
+  `holder_count` = positive balances; `CompleteEvent` → block + pool + graduated_at; `Settled` → `fees`;
+  `PayeeRedirected`/`HolderRewardsSet`/`Paused`/`RewardsReleased`/`LpDrawn` applied; `pg_notify('satpad_live')` on trades
+  and registrations. Tests (4, Postgres): unregistered ignored → registered indexed, duplicate signature rejected,
+  holders/holder_count, sell + stage flip at 10 buys, fees idempotent.
+
 ## Deferred
 - `launch_v0.json` fixture (needs a fresh fork; test validator history is ~60 slots).
 - Tasks 2–8 (STATUS.md).
