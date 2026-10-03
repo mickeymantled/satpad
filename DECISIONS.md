@@ -40,3 +40,10 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D8 — 2026-10-02 — M1 — `rewards_run` PDA index encoded as u64 little-endian
 **Decision:** `["rewards_run", mint, run_index.to_le_bytes()]` with `run_index: u64`. Spec left the encoding unspecified.
 **Status:** approved by human 2026-10-02.
+
+## D9 — 2026-10-02 — M2 — Constants and gates for satpad_vault (human-approved before task 1)
+- `RECOVERY_ADDRESS`: single `consts.rs`, selected by cargo feature — `fork` (dev keypair in `keys/`, pinned pubkey) vs `mainnet` (the Squads vault address, supplied at M10). A build-time test refuses a `mainnet` build whose recovery address equals any dev key.
+- `LP_DRAW_MAX_CAP = 500_000` sats (0.005 BTC) per draw.
+- `declare_coin` requires the curve's `creator_fee_bps == Config.creator_fee_bps` exactly (not ≤ cap). Every registered coin pays the same fee or it is not registered.
+- LiteSVM pre-approved as the bankrun fallback if bankrun cannot load an Anchor 1.2 binary (test dep only).
+**Status:** approved by human 2026-10-02.
