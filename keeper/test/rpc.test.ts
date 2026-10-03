@@ -82,6 +82,27 @@ describe("Sender", () => {
   });
 });
 
+describe("Sender: AlreadyProcessed", () => {
+  it("retries with a fresh blockhash instead of marking the row failed", async () => {
+    const H1 = Keypair.generate().publicKey.toBase58(), H2 = Keypair.generate().publicKey.toBase58();
+    const hashes = [H1, H1, H2]; let h = 0; let sims = 0;
+    const sent: Transaction[] = [];
+    const rpc: Rpc = {
+      getLatestBlockhash: async () => ({ blockhash: hashes[Math.min(h++, hashes.length - 1)]!, lastValidBlockHeight: 100 }),
+      simulateTransaction: (async () => { sims++; return { context: { slot: 1 }, value: { err: sims === 1 ? "AlreadyProcessed" : null, logs: [] } }; }) as Rpc["simulateTransaction"],
+      sendRawTransaction: async (raw) => { sent.push(Transaction.from(raw)); return "sigA"; },
+      confirmTransaction: (async () => ({ context: { slot: 9 }, value: { err: null } })) as Rpc["confirmTransaction"],
+    };
+    const store = new MemoryLedger();
+    const s = new Sender(rpc, new FixedFeeProvider(1000n), store, { computeUnitLimit: 200_000, maxAttempts: 5, log });
+    const r = await s.send({ type: "settle", mint: "M", actor: "k", amounts: {} }, [ix()], [payer]);
+    expect(r.attempts).toBe(2);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.recentBlockhash).toBe(H2); // waited past the repeated H1
+    expect(store.rows[0]!.status).toBe("confirmed");
+  });
+});
+
 describe("fee bump", () => {
   it("+50% per attempt, capped at 8x", () => {
     expect([1, 2, 3, 4, 5, 6, 7].map((a) => bump(1000n, a))).toEqual([1000n, 1500n, 2250n, 3375n, 5063n, 7594n, 7594n]);

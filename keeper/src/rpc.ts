@@ -17,6 +17,8 @@ export class SendError extends Error {
 export interface SendResult { signature: string; slot: bigint; attempts: number; ledgerId: bigint }
 
 const EXPIRED = /block ?height exceeded|blockhash not found|expired|TransactionExpiredBlockheightExceededError/i;
+/** The exact same bytes were processed already (arg-less instruction + repeated blockhash): rebuild with a new blockhash. */
+const ALREADY = /AlreadyProcessed/;
 
 export class Sender {
   constructor(private readonly rpc: Rpc, private readonly fees: PriorityFeeProvider, private readonly store: LedgerStore, private readonly opts: SenderOptions) {}
@@ -30,18 +32,28 @@ export class Sender {
     const id = await this.store.begin(entry);
     const log = this.opts.log.child({ ledgerId: id, type: entry.type, mint: entry.mint });
     let lastErr: Error | undefined;
+    let lastBlockhash: string | null = null;
     for (let attempt = 1; attempt <= this.opts.maxAttempts; attempt++) {
       try {
         const tx = new Transaction();
         const fee = await this.fees.estimate(tx, attempt);
         tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: this.opts.computeUnitLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Number(fee) }), ...ixs);
         tx.feePayer = signers[0]!.publicKey;
-        const { blockhash, lastValidBlockHeight } = await this.rpc.getLatestBlockhash("confirmed");
+        let { blockhash, lastValidBlockHeight } = await this.rpc.getLatestBlockhash("confirmed");
+        // After an AlreadyProcessed, the same blockhash would reproduce the same signature: wait for a new one.
+        for (let i = 0; lastBlockhash !== null && blockhash === lastBlockhash && i < 20; i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          ({ blockhash, lastValidBlockHeight } = await this.rpc.getLatestBlockhash("confirmed"));
+        }
+        lastBlockhash = blockhash;
         tx.recentBlockhash = blockhash;
         tx.sign(...signers);
-        if (attempt === 1) {
+        if (attempt === 1 || lastErr instanceof SendError && lastErr.retryable && ALREADY.test(lastErr.message)) {
           const sim = await this.rpc.simulateTransaction(tx);
-          if (sim.value.err) throw new SendError(`simulation failed: ${JSON.stringify(sim.value.err)}`, sim.value.logs ?? [], false);
+          if (sim.value.err) {
+            const msg = JSON.stringify(sim.value.err);
+            throw new SendError(`simulation failed: ${msg}`, sim.value.logs ?? [], ALREADY.test(msg));
+          }
         }
         const signature = await this.rpc.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0, ...this.opts.sendOptions });
         await this.store.markSent(id, signature, attempt);

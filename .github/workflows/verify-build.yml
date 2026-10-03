@@ -33,7 +33,8 @@ jobs:
         run: cargo install solana-verify --version ${{ env.SOLANA_VERIFY_VERSION }} --locked
       - name: Reproducible build (Docker, amd64)
         run: |
-          solana-verify build --library-name satpad_vault --base-image "$BASE_IMAGE" --arch "$SBPF_ARCH" --cargo-build-sbf-args="--tools-version $PLATFORM_TOOLS" .
+          # absolute mount path: solana-verify 0.5.2 strips the mount prefix by string replacement, so "." would delete every dot in the manifest path
+          solana-verify build --library-name satpad_vault --base-image "$BASE_IMAGE" --arch "$SBPF_ARCH" --cargo-build-sbf-args="--tools-version $PLATFORM_TOOLS" "$GITHUB_WORKSPACE"
           ls -la target/deploy/satpad_vault.so
       - name: Hash
         id: hash
