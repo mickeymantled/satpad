@@ -1,0 +1,9 @@
+{
+  "name": "@satpad/keeper",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --passWithNoTests" },
+  "dependencies": { "@satpad/sdk": "workspace:*" },
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^3.0.0" }
+}

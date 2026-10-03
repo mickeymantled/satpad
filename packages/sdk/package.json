@@ -1,0 +1,24 @@
+{
+  "name": "@satpad/sdk",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pump-fun/pump-sdk": "2.0.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "bn.js": "^5.2.5"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

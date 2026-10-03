@@ -1,3 +1,9 @@
+packages:
+  - packages/*
+  - keeper
+  - indexer
+  - api
+  - web
 allowBuilds:
   bigint-buffer: false
   bufferutil: false
