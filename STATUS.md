@@ -53,3 +53,32 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 8. Soak: fork + seed + trader + keeper for 24 h in the background; **(human addition)** when it finishes it writes a summary (settles, failures, max per-coin lag between fee accrual and settle) into `STATUS.md` and `keeper/MILESTONE.md`; close M3.
 
 **Needs human before task 1:** none (Postgres and Drizzle are named in SPEC). Telegram alerts need a bot token only when deployed.
+
+## Milestone 4 — Indexer and API (plan, awaiting "go")
+
+**Definition of done (SPEC):** `/coins` and `/ledger` match on-chain state for the fork set. Verified by a script that reads the chain directly and diffs the API.
+
+**Constraints this session:** the M3 soak owns the running fork (port 8899), keeper (health on 8081) and trader — nothing restarts them. The indexer and API are built against that live fork read-only; it is the ideal data source (10 coins, continuous trades, settles every minute). No new accounts can be cloned into the fork until it restarts, so Pyth is behind an interface with a dev price until then.
+
+**Design notes**
+- Sources (SPEC "Sources"): production = Helius webhooks; dev/fork + startup backfill = polling `getSignaturesForAddress` over the vault program, each registered coin's bonding curve, and (after graduation) its pool. Both feed one `processTransaction(sig, tx)` path keyed by signature, so ingestion is idempotent and the two sources can overlap safely. Backfill starts from the vault's `Declared` events, as SPEC requires.
+- Decoding: pump.fun `TradeEvent`/`CreateEvent`/`CompleteEvent` and PumpSwap events from the pinned IDLs (`idl-ref/`), vault events from the SDK parser. Holders are materialized from `postTokenBalances` deltas per transaction (no `getProgramAccounts` sweeps in the hot path).
+- Stage (SPEC): `dust` < 10 buys, `mining` on the curve, `block` on the migration/complete event. `curve_progress_bps` from `real_token_reserves` vs the initial real reserves of the curve (no BTC threshold needed — VERIFIED V5 stays open but is not a blocker: progress is token-side).
+- Fees: `fees` rows from `Settled` events; pump's protocol fee modeled (V2: 0.95% curve) so displayed volume reconciles.
+- Prices: `PriceProvider` interface — Pyth BTC/USD on mainnet (V7 to verify the feed account + Pyth SDK shape), fixed dev price on the fork. USD fields are derived at read time, never stored.
+- API: REST + WebSocket per SPEC. Node 22 has no built-in WebSocket *server*, so a small framework is needed — **proposal: Fastify + `@fastify/websocket`** (one dependency decision; SPEC names "REST + WebSocket" without a library). Amounts as base-unit strings plus a `ui` decimal field. Rate limiting via `@fastify/rate-limit`. Read-only.
+- The keeper's `coins` upsert stays; the indexer owns the remaining columns (name/symbol/uri from `CreateEvent`, stage, progress, pool, graduated_at).
+
+**Verification before code:** V8 (Helius webhook payload shape — raw vs enhanced, auth header, retry semantics, account-address filters, pricing) before task 3; V7 (Pyth BTC/USD feed account + read method) before task 6. Both via live docs; recorded in VERIFIED.md.
+
+**Tasks (one commit each, vitest with every task):**
+1. `packages/db`: tables `trades`, `holders`, `fees`, `rewards_runs`, `lp_runs`, `bridge_transfers`, `indexer_cursor`; `coins` gains name/symbol/uri/stage/progress/pool/graduated_at/buys/sells/volume columns; migration; tests.
+2. `indexer/src/decode/`: pump curve events, PumpSwap events, vault events → typed records; token-balance deltas → holder deltas. Tests use transaction logs recorded from the live fork (`indexer/test/fixtures/*.json`, captured by a script).
+3. `indexer/src/sources/`: `PollingSource` (signature cursor per address, confirmed commitment, overlap-safe) and `HeliusWebhookSource` (HTTP receiver, auth header, idempotent) — V8 first. Startup backfill from `Declared`.
+4. `indexer/src/process.ts`: idempotent per-signature processing → `trades`, `holders`, `fees`, `coins` stage/progress/counters, `rewards_runs`, `lp_runs`; derived stats (24h volume, holder count, mcap in BTC). Tests against fixtures + Postgres.
+5. `indexer/src/main.ts`: run polling against the live fork alongside the soak (read-only), health endpoint, Dockerfile/railway.toml. Verify all 10 soak coins and every settle appear.
+6. `api/`: Fastify app — `GET /coins` (sorts: volume24h|newest|mcap|trending|pays_holders; `stage` filter; pagination), `/coins/:mint`, `/coins/:mint/trades|holders|rewards`, `/ledger?type=`, `/stats`; `PriceProvider` (V7); amounts `{ base: string, ui: string }`; rate limit. Tests with a seeded Postgres.
+7. `WS /live`: trade + new-coin stream from Postgres `LISTEN/NOTIFY` emitted by the processor; test with a real socket.
+8. `scripts/fork-api-check.ts`: reads chain state for the fork's coins (curve reserves, counts of vault events) and diffs `/coins` + `/ledger`; exits non-zero on mismatch. Add to `keeper-reconcile.yml` as a second job. Close M4 (`indexer/MILESTONE.md`, `api/MILESTONE.md`).
+
+**Needs human before task 6:** approval of Fastify (+ `@fastify/websocket`, `@fastify/rate-limit`) as the HTTP/WS dependency, or name an alternative.
