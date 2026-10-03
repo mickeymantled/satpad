@@ -7,7 +7,7 @@ test("home renders hero, stats, ticker and the fork's coins; filters and sorts c
   await expect(page.getByTestId("live-ticker")).toBeVisible();
   const cards = page.getByTestId("coin-card");
   const total = await cards.count();
-  expect(total).toBeGreaterThanOrEqual(10); // the seed makes 10; e2e launches add more
+  expect(total).toBeGreaterThanOrEqual(Number(process.env["E2E_MIN_COINS"] ?? 3)); // fork:seed makes 3 in CI, 10 in the soak; launches add more
   await expect(cards.first()).toContainText("BTC");
   await expect(cards.first()).toContainText("sats");
   // stage filter: Dust (all 10 soak coins are below 10 buys? no — many are mining); counts must be ≤ 10 and consistent

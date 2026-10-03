@@ -56,6 +56,8 @@ jobs:
           pnpm db:migrate
           pnpm fork:seed --coins 3
           pnpm fork:trade --rate-ms 300 --duration-s 10
+          # keep trades flowing during the suite so the live ticker (WS /live) has something to show
+          nohup pnpm fork:trade --rate-ms 3000 --duration-s 900 > trader.log 2>&1 &
           LAUNCH_ALT=$(node -p "require('./scripts/fork-keys/seed.json').lookupTable")
           PORT=8083 METADATA_BACKEND=api CORS_ORIGINS='*' LAUNCH_ALT="$LAUNCH_ALT" DEV_FAUCET_KEYPAIR="$PWD/scripts/fork-keys/wbtc-authority.json" \
             nohup pnpm --filter @satpad/api exec tsx src/main.ts > api.log 2>&1 &
@@ -82,4 +84,5 @@ jobs:
             web/playwright-report
             api.log
             indexer.log
+            trader.log
           if-no-files-found: ignore
