@@ -1,6 +1,8 @@
 // Shared helpers for fork scripts: funded throwaway wallets, wBTC minting via the patched mint authority, a static
 // launch lookup table, and a v0/legacy sender. Fork only — the wBTC authority keypair exists nowhere else.
 import { readFileSync } from "node:fs";
+import path from "node:path";
+const ROOT = path.resolve(__dirname, "../..");
 import { AddressLookupTableAccount, ComputeBudgetProgram, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { OnlinePumpSdk } from "@pump-fun/pump-sdk";
@@ -10,7 +12,7 @@ export const RPC = process.env["LOCAL_RPC_URL"] ?? "http://127.0.0.1:8899";
 export const ata = (owner: PublicKey) => getAssociatedTokenAddressSync(BTC_QUOTE_MINT, owner, true, BTC_QUOTE_TOKEN_PROGRAM);
 
 export function wbtcAuthority(): Keypair {
-  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync("scripts/fork-keys/wbtc-authority.json", "utf8"))));
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path.join(ROOT, "scripts/fork-keys/wbtc-authority.json"), "utf8"))));
 }
 
 export async function fundSol(conn: Connection, keys: PublicKey[], sol = 10): Promise<void> {

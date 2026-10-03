@@ -29,5 +29,13 @@
   expiry with the keeper's bump curve, ≤ 5 attempts. Unit tests (4) with a fake wallet and scripted RPC; e2e: burner
   wallet connects from the header.
 
+- Task 5: `/coin/[mint]` — header with stage/progress, rewards badge, pause flag; `PriceChart` (lightweight-charts,
+  sats per token from indexed trades); mcap / 24 h volume / fees settled / holders tiles; `CoinTabs` (trades, holders,
+  explorer links); `TradePanel` (live curve state via RPC every 10 s, SDK curve-math quotes, slippage presets in bps,
+  idempotent quote-ATA creation, `buildBuyV2`/`buildSellV2`, `useTx` → `TxPreviewModal` before the wallet prompt,
+  status/signature/error lines, "Buy with native BTC" → `/btc`); payee + fee-account links (CoinFee, fee ATA, pots,
+  curve, pool). e2e `coin.spec.ts`: chart/tabs/links, burner connects, is funded from Node via the fork keys, buys
+  0.0005 BTC of a soak coin and sells 1,000 tokens — both confirmed on the live fork.
+
 ## Deferred
 - Tasks 2–8 (STATUS.md).
