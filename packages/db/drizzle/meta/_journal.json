@@ -15,6 +15,13 @@
       "when": 1791025311401,
       "tag": "0001_m4_indexer_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791030047135,
+      "tag": "0002_m5_coin_metadata",
+      "breakpoints": true
     }
   ]
 }

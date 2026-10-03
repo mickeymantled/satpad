@@ -173,3 +173,18 @@ export const keeperHealth = pgTable("keeper_health", {
   consecutiveFailures: integer("consecutive_failures").notNull().default(0),
   lastError: text("last_error"),
 }, (t) => [primaryKey({ columns: [t.loop, t.instance] })]);
+
+/** D18 fallback metadata backend (and the fork path): `POST /metadata` stores the JSON + image, served at `/m/:id.json|png`. */
+export const coinMetadata = pgTable("coin_metadata", {
+  id: text("id").primaryKey(),
+  mint: text("mint"),
+  name: text("name").notNull(),
+  symbol: text("symbol").notNull(),
+  description: text("description").notNull(),
+  imageMime: text("image_mime").notNull(),
+  imageBase64: text("image_base64").notNull(),
+  twitter: text("twitter"),
+  telegram: text("telegram"),
+  website: text("website"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
+});

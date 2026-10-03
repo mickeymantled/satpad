@@ -9,9 +9,10 @@ import type { PriceProvider } from "./prices";
 import { registerLive, type LiveHub } from "./live";
 import { registerDevFaucet } from "./devFaucet";
 import { registerJupiter, type JupiterOptions } from "./jupiter";
+import { registerMetadata, type MetadataBackend } from "./metadata";
 import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, stats, type CoinSort, type Stage } from "./queries";
 
-export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string; /** V10: Jupiter proxy; `null` disables it (e.g. a fork with the dev faucet). */ jupiter?: JupiterOptions | null }
+export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string; /** V10: Jupiter proxy; `null` disables it (e.g. a fork with the dev faucet). */ jupiter?: JupiterOptions | null; /** D18: active metadata backend + public origins for `/m/:id` URIs and the website back-link. */ metadata?: { backend: MetadataBackend; publicUrl: string; webUrl: string; pumpUrl?: string; fetchImpl?: typeof fetch }; /** D14: launch lookup table address served to the web app. */ launchAlt?: string }
 const page = (q: Record<string, unknown>) => ({ limit: Math.min(100, Math.max(1, Number(q["limit"] ?? 25) || 25)), offset: Math.max(0, Number(q["offset"] ?? 0) || 0) });
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -30,14 +31,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
     if (req.method === "OPTIONS") return reply.code(204).send();
   });
-  app.addHook("onSend", async (_req, reply) => { reply.header("cache-control", "public, max-age=2"); });
+  app.addHook("onSend", async (_req, reply) => { if (!reply.hasHeader("cache-control")) reply.header("cache-control", "public, max-age=2"); });
 
   if (deps.live) await registerLive(app, deps.live);
   if (deps.devFaucetKeypair && deps.rpc) registerDevFaucet(app, deps.rpc, deps.devFaucetKeypair);
   if (deps.jupiter !== null) registerJupiter(app, deps.jupiter ?? {});
+  const metadata = deps.metadata ?? { backend: "api" as const, publicUrl: "http://127.0.0.1:8083", webUrl: "http://127.0.0.1:3000" };
+  registerMetadata(app, { db: deps.db, ...metadata });
   app.get("/healthz", async () => ({ ok: true, liveClients: deps.live?.clients ?? 0 }));
   /** D18: runtime config the web app reads (active metadata backend, dev faucet presence). */
-  app.get("/config", async () => ({ metadataBackend: process.env["METADATA_BACKEND"] ?? "api", devFaucet: Boolean(deps.devFaucetKeypair), swap: deps.devFaucetKeypair ? "dev-faucet" : deps.jupiter !== null ? "jupiter" : "none", cluster: process.env["CLUSTER"] ?? "custom" }));
+  app.get("/config", async () => ({ metadataBackend: metadata.backend, launchAlt: deps.launchAlt ?? null, webUrl: metadata.webUrl, devFaucet: Boolean(deps.devFaucetKeypair), swap: deps.devFaucetKeypair ? "dev-faucet" : deps.jupiter !== null ? "jupiter" : "none", cluster: process.env["CLUSTER"] ?? "custom" }));
 
   app.get("/coins", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
