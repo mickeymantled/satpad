@@ -37,5 +37,14 @@
   curve, pool). e2e `coin.spec.ts`: chart/tabs/links, burner connects, is funded from Node via the fork keys, buys
   0.0005 BTC of a soak coin and sells 1,000 tokens — both confirmed on the live fork.
 
+- Task 6a (D17): API `POST /dev/faucet` (fork only; `DEV_FAUCET_KEYPAIR` = patched wBTC mint authority) builds a
+  SOL→wBTC swap at a fixed 100,000 sats/SOL, partially signed server-side; `GET /config` reports `devFaucet` and the
+  metadata backend; manual CORS allowlist (`CORS_ORIGINS`). Web: `lib/swap.ts` `loadSolSwapper()` returns the faucet
+  swapper only when `NEXT_PUBLIC_DEV_SWAP=1` (build-time inlined so the dynamic import of `lib/devSwap.ts` is
+  tree-shaken); `web/scripts/check-no-dev-swap.sh` fails a production build that still contains the marker.
+  `SwapPanel` appears in the trade panel when the wallet holds no wBTC. `useTx` exposes simulation logs under the
+  error line. e2e `sol-only.spec.ts`: SOL-only burner → faucet swap 0.5 SOL → buys 0.0002 BTC of a soak coin.
+  V10 (Jupiter shapes + SOL→wBTC depth) recorded; fixtures in `web/test/fixtures/jupiter/`.
+
 ## Deferred
-- Tasks 2–8 (STATUS.md).
+- Tasks 6b–8 (STATUS.md).

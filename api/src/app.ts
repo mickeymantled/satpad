@@ -7,18 +7,35 @@ import type { Db } from "@satpad/db";
 import { btc, iso, tokens } from "./format";
 import type { PriceProvider } from "./prices";
 import { registerLive, type LiveHub } from "./live";
+import { registerDevFaucet } from "./devFaucet";
 import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, stats, type CoinSort, type Stage } from "./queries";
 
-export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub }
+export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string }
 const page = (q: Record<string, unknown>) => ({ limit: Math.min(100, Math.max(1, Number(q["limit"] ?? 25) || 25)), offset: Math.max(0, Number(q["offset"] ?? 0) || 0) });
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   await app.register(rateLimit, { max: deps.rateLimitPerMinute ?? 120, timeWindow: "1 minute" });
+  // CORS for the web app (read-only GETs + the dev faucet POST). Origin allowlist; no credentials.
+  const origins = deps.corsOrigins ?? ["*"];
+  app.addHook("onRequest", async (req, reply) => {
+    const origin = req.headers.origin;
+    if (origin && (origins.includes("*") || origins.includes(origin))) {
+      reply.header("access-control-allow-origin", origins.includes("*") ? "*" : origin);
+      reply.header("access-control-allow-methods", "GET,POST,OPTIONS");
+      reply.header("access-control-allow-headers", "content-type");
+      reply.header("access-control-max-age", "600");
+      if (!origins.includes("*")) reply.header("vary", "origin");
+    }
+    if (req.method === "OPTIONS") return reply.code(204).send();
+  });
   app.addHook("onSend", async (_req, reply) => { reply.header("cache-control", "public, max-age=2"); });
 
   if (deps.live) await registerLive(app, deps.live);
+  if (deps.devFaucetKeypair && deps.rpc) registerDevFaucet(app, deps.rpc, deps.devFaucetKeypair);
   app.get("/healthz", async () => ({ ok: true, liveClients: deps.live?.clients ?? 0 }));
+  /** D18: runtime config the web app reads (active metadata backend, dev faucet presence). */
+  app.get("/config", async () => ({ metadataBackend: process.env["METADATA_BACKEND"] ?? "api", devFaucet: Boolean(deps.devFaucetKeypair), cluster: process.env["CLUSTER"] ?? "custom" }));
 
   app.get("/coins", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;

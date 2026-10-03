@@ -12,9 +12,13 @@ import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, COIN_TOKEN_PROGRAM, buildBuyV2
 import { btc, sats as fmtSats, tokens as fmtTokens } from "@/lib/format";
 import { useTx } from "@/lib/useTx";
 import { TxPreviewModal } from "./TxPreviewModal";
-import { env } from "@/lib/env";
+import { SwapPanel } from "./SwapPanel";
 
 interface CurveState { global: Global; feeConfig: FeeConfig; quoteControl: QuoteControl | null; curve: BondingCurve; supply: bigint }
+
+function interestingLogs(logs: string[]): string {
+  return logs.filter((l) => l.includes("Program log") || l.includes("failed") || l.includes("Error")).slice(-15).join("\n");
+}
 
 export function TradePanel({ mint, symbol }: { mint: string; symbol: string | null }) {
   const { connection } = useConnection();
@@ -74,7 +78,6 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
     try { await tx.send(side === "buy" ? `Buy ${symbol ?? "coin"}` : `Sell ${symbol ?? "coin"}`, ixs); setInput(""); await refresh(); } catch { /* shown via tx.error */ }
   };
 
-  const canSwapSol = env.devSwap; // production path arrives with the Jupiter task
   return (
     <div className="card p-4 space-y-3" data-testid="trade-panel">
       {tx.preview && <TxPreviewModal preview={tx.preview.p} title={tx.preview.title} onConfirm={() => tx.preview?.resolve(true)} onCancel={() => tx.preview?.resolve(false)} />}
@@ -84,7 +87,7 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
       </div>
       <label className="block text-xs" style={{ color: "var(--muted)" }}>{side === "buy" ? "Spend (BTC)" : `Sell (${symbol ?? "tokens"})`}</label>
       <input className="input num" inputMode="decimal" placeholder={side === "buy" ? "0.0001" : "1000"} value={input} onChange={(e) => setInput(e.target.value)} data-testid="trade-amount" />
-      {balances && <div className="text-xs num" style={{ color: "var(--muted)" }}>Balance: {btc(balances.wbtc)} · {fmtTokens(balances.coin)} {symbol ?? ""}</div>}
+      {balances && <div className="text-xs num" style={{ color: "var(--muted)" }} data-testid="trade-balance">Balance: {btc(balances.wbtc)} · {fmtTokens(balances.coin)} {symbol ?? ""}</div>}
       <div className="flex items-center gap-2 text-xs" style={{ color: "var(--muted)" }}>
         <span>Slippage</span>
         {[50, 100, 300].map((b) => <button key={b} className="btn px-2 py-1" style={slippageBps === b ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined} onClick={() => setSlippageBps(b)}>{b / 100}%</button>)}
@@ -95,14 +98,27 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
         </div>
       )}
       {err && <div className="text-xs" style={{ color: "var(--red)" }}>{err}</div>}
-      {tx.error && <div className="text-xs" style={{ color: "var(--red)" }} data-testid="tx-error">{tx.error}</div>}
+      {tx.error && (
+        <div className="text-xs" style={{ color: "var(--red)" }} data-testid="tx-error">
+          {tx.error}
+          {tx.logs.length > 0 && (
+            <details className="mt-1" style={{ color: "var(--muted)" }}>
+              <summary>simulation logs</summary>
+              <pre className="whitespace-pre-wrap text-[10px]" data-testid="tx-logs">{interestingLogs(tx.logs)}</pre>
+            </details>
+          )}
+        </div>
+      )}
       {tx.status && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="tx-status">{tx.status}</div>}
       {tx.signature && <div className="text-xs num" data-testid="tx-signature">confirmed {tx.signature.slice(0, 16)}…</div>}
       <button className="btn btn-accent w-full" disabled={!tx.connected || !quote || Boolean(tx.status && tx.status !== "confirmed")} onClick={submit} data-testid="trade-submit">
         {!tx.connected ? "Connect wallet" : side === "buy" ? "Buy" : "Sell"}
       </button>
       {balances && balances.wbtc === 0n && side === "buy" && (
-        <div className="text-xs" style={{ color: "var(--muted)" }}>No BTC on Solana yet. {canSwapSol ? <span>Use the SOL swap (task 6).</span> : <Link href="/btc" className="underline">Bring native BTC</Link>}.</div>
+        <div className="space-y-2">
+          <div className="text-xs" style={{ color: "var(--muted)" }}>No BTC on Solana yet — swap some SOL or <Link href="/btc" className="underline">bring native BTC</Link>.</div>
+          <SwapPanel onDone={() => void refresh()} />
+        </div>
       )}
       <Link href={`/btc?to=${mint}`} className="btn w-full text-sm">Buy with native BTC</Link>
       <p className="text-[11px]" style={{ color: "var(--muted)" }}>Creator fee 1% in BTC → 25% Reserve · 25% buyback · 10% operator · 40% deployer or holders. {toUi(1n)}</p>

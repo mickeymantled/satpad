@@ -85,6 +85,15 @@ describe("API (Postgres)", async () => {
     const s = (await get("/stats")).body;
     expect(s).toMatchObject({ coinsLaunched: 2, btcIntoLiquidity: { base: "2500" }, btcPaidToHolders: { base: "777" }, btcTradedToday: { base: "300100" }, tradesToday: 2 });
   });
+  it("CORS: allowlisted origin gets headers, others do not; OPTIONS is 204", async () => {
+    const strict = await buildApp({ db, prices: new FixedPriceProvider(1n), corsOrigins: ["http://app.test"] });
+    const ok = await strict.inject({ method: "GET", url: "/stats", headers: { origin: "http://app.test" } });
+    expect(ok.headers["access-control-allow-origin"]).toBe("http://app.test");
+    const no = await strict.inject({ method: "GET", url: "/stats", headers: { origin: "http://evil.test" } });
+    expect(no.headers["access-control-allow-origin"]).toBeUndefined();
+    expect((await strict.inject({ method: "OPTIONS", url: "/stats", headers: { origin: "http://app.test" } })).statusCode).toBe(204);
+    await strict.close();
+  });
   it("rate limits", async () => {
     const tight = await buildApp({ db, prices: new FixedPriceProvider(1n), rateLimitPerMinute: 2 });
     const codes = [];
