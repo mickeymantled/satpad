@@ -17,6 +17,13 @@
   fork: trade sides/venue/quote mint/reserves/holder balance, Settled amounts == SDK `splitFee`, PayeePaid, collect,
   failed-tx no-op, Helius-raw ≡ RPC shape, multi-account holder sums.
 
+- Task 3: `src/ratelimit.ts` `TokenBucket` (req/s + burst, per-minute counters, waited-ms); `src/sources/polling.ts`
+  `PollingSource` (per-address cursor via `indexer_cursor` or memory; pages newest→cursor with `until`, processes
+  oldest→newest, cursor advanced per tx so a crash resumes mid-page; skips errored sigs; failing address isolated);
+  `src/sources/webhook.ts` `WebhookQueue` + `startWebhookServer` (V8: `Authorization` == authHeader else 403, JSON
+  array else 400, 200 acked synchronously, async drain shared by callers, malformed elements counted and ignored).
+  `TxSink.handle(tx) → boolean` is the dedupe contract the processor implements. Tests (6).
+
 ## Deferred
 - `launch_v0.json` fixture (needs a fresh fork; test validator history is ~60 slots).
 - Tasks 2–8 (STATUS.md).
