@@ -33,6 +33,12 @@
   loop; `keeper_health` upsert per tick; `--once` exits non-zero on failure; SIGINT/SIGTERM), `Dockerfile`, `railway.toml`.
   Tests (4): failure counting/alert/reset, start/reschedule/stop with injected timers, health staleness, Telegram POST.
 
+- Task 6: `scripts/lib/fork.ts`, `scripts/fork-seed-coins.ts` (`pnpm fork:seed --coins 10`), `scripts/fork-trader.ts`
+  (`pnpm fork:trade --rate-ms 400 --duration-s 45`). First real keeper run on the fork (2026-10-03): 10 coins seeded
+  through the v0 launch flow, 84 trades, `keeper --once` → `collect_creator_fee` ×10, `settle` ×10, `pay_payee` ×4 all
+  confirmed first attempt; ledger amounts carry the split (e.g. fee 2350 → liquidity 588, buyback 587, operator 235,
+  deployer 940).
+
 ## How to run
 ```bash
 docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine

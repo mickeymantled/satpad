@@ -24,7 +24,10 @@
     "fork:m2": "tsx scripts/fork-m2-settle.ts",
     "repro:sbpf": "tsx scripts/repro-sbpf.ts",
     "db:migrate": "pnpm --filter @satpad/db migrate",
-    "db:generate": "pnpm --filter @satpad/db generate"
+    "db:generate": "pnpm --filter @satpad/db generate",
+    "fork:seed": "tsx scripts/fork-seed-coins.ts",
+    "fork:trade": "tsx scripts/fork-trader.ts",
+    "keeper": "pnpm --filter @satpad/keeper start"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"
