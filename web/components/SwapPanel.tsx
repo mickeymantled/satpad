@@ -17,7 +17,10 @@ export function SwapPanel({ onDone }: { onDone?: () => void }) {
   useEffect(() => {
     const l = toLamports(sol);
     if (!swapper || l === null) { setQuote(null); return; }
-    swapper.quote(l).then(setQuote).catch(() => setQuote(null));
+    // Debounced: Jupiter's keyless tier allows 0.5 requests per second (V10).
+    let live = true;
+    const t = setTimeout(() => { swapper.quote(l).then((v) => { if (live) setQuote(v); }).catch(() => { if (live) setQuote(null); }); }, swapper.kind === "jupiter" ? 500 : 0);
+    return () => { live = false; clearTimeout(t); };
   }, [sol, swapper]);
   if (swapper === undefined) return null;
   if (swapper === null) return <div className="text-xs" style={{ color: "var(--muted)" }}>SOL → BTC swap unavailable on this network.</div>;

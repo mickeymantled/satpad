@@ -8,9 +8,10 @@ import { btc, iso, tokens } from "./format";
 import type { PriceProvider } from "./prices";
 import { registerLive, type LiveHub } from "./live";
 import { registerDevFaucet } from "./devFaucet";
+import { registerJupiter, type JupiterOptions } from "./jupiter";
 import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, stats, type CoinSort, type Stage } from "./queries";
 
-export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string }
+export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string; /** V10: Jupiter proxy; `null` disables it (e.g. a fork with the dev faucet). */ jupiter?: JupiterOptions | null }
 const page = (q: Record<string, unknown>) => ({ limit: Math.min(100, Math.max(1, Number(q["limit"] ?? 25) || 25)), offset: Math.max(0, Number(q["offset"] ?? 0) || 0) });
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -33,9 +34,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   if (deps.live) await registerLive(app, deps.live);
   if (deps.devFaucetKeypair && deps.rpc) registerDevFaucet(app, deps.rpc, deps.devFaucetKeypair);
+  if (deps.jupiter !== null) registerJupiter(app, deps.jupiter ?? {});
   app.get("/healthz", async () => ({ ok: true, liveClients: deps.live?.clients ?? 0 }));
   /** D18: runtime config the web app reads (active metadata backend, dev faucet presence). */
-  app.get("/config", async () => ({ metadataBackend: process.env["METADATA_BACKEND"] ?? "api", devFaucet: Boolean(deps.devFaucetKeypair), cluster: process.env["CLUSTER"] ?? "custom" }));
+  app.get("/config", async () => ({ metadataBackend: process.env["METADATA_BACKEND"] ?? "api", devFaucet: Boolean(deps.devFaucetKeypair), swap: deps.devFaucetKeypair ? "dev-faucet" : deps.jupiter !== null ? "jupiter" : "none", cluster: process.env["CLUSTER"] ?? "custom" }));
 
   app.get("/coins", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;

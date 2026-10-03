@@ -46,5 +46,16 @@
   error line. e2e `sol-only.spec.ts`: SOL-only burner → faucet swap 0.5 SOL → buys 0.0002 BTC of a soak coin.
   V10 (Jupiter shapes + SOL→wBTC depth) recorded; fixtures in `web/test/fixtures/jupiter/`.
 
+- Task 6b (V10): API `GET /swap/quote?lamports` and `POST /swap/instructions` proxy Jupiter (`api/src/jupiter.ts`;
+  pair pinned to SOL → BTC_QUOTE_MINT, amount capped at 100 SOL, optional `JUPITER_API_KEY` never leaves the server,
+  upstream errors → 502). `web/lib/jupiter.ts`: quote → swap-instructions (Jupiter's compute-budget instructions
+  dropped in favour of ours) → lookup tables from RPC → size check against 1232 bytes → `sendWithWallet` simulation →
+  refuse before the wallet prompt if signature + priority fee + new-ATA rent exceed 0.003 SOL → sign, send, confirm.
+  The swap is always its own transaction (V10 sizes leave no room to compose with a launch). `loadSolSwapper()`
+  chooses Jupiter when `GET /config` says `swap: "jupiter"`; `SwapPanel` debounces quotes to Jupiter's 0.5 req/s.
+  Tests: 4 API (proxy shape, pair pinning, key forwarding, 502) + 6 web (decode, sizes, overhead math, happy path
+  with a v0 transaction over 3 tables, refusal before signing, failed simulation). Live check 2026-10-03: the built
+  transaction simulated on mainnet with an unsigned funded payer — 908 bytes, 3 tables, 177,421 CU, no error.
+
 ## Deferred
-- Tasks 6b–8 (STATUS.md).
+- Tasks 7–8 (STATUS.md).

@@ -15,7 +15,7 @@ async function main() {
   const prices = new CachedPriceProvider(inner, Number(process.env["PRICE_CACHE_MS"] ?? 30_000));
   const corsOrigins = (process.env["CORS_ORIGINS"] ?? "*").split(",").map((s) => s.trim()).filter(Boolean);
   const rpc = new Connection(process.env["SOLANA_RPC_URL"] ?? "http://127.0.0.1:8899", "confirmed");
-  const app = await buildApp({ db, prices, rpc, rateLimitPerMinute: Number(process.env["RATE_LIMIT_PER_MINUTE"] ?? 120), live, corsOrigins, ...(process.env["DEV_FAUCET_KEYPAIR"] && { devFaucetKeypair: process.env["DEV_FAUCET_KEYPAIR"] }) });
+  const app = await buildApp({ db, prices, rpc, rateLimitPerMinute: Number(process.env["RATE_LIMIT_PER_MINUTE"] ?? 120), live, corsOrigins, ...(process.env["DEV_FAUCET_KEYPAIR"] && { devFaucetKeypair: process.env["DEV_FAUCET_KEYPAIR"] }), jupiter: process.env["JUPITER_API_URL"] === "off" ? null : { ...(process.env["JUPITER_API_URL"] && { baseUrl: process.env["JUPITER_API_URL"] }), ...(process.env["JUPITER_API_KEY"] && { apiKey: process.env["JUPITER_API_KEY"] }) } });
   await app.listen({ port, host: "0.0.0.0" });
   process.stdout.write(JSON.stringify({ level: "info", msg: "api listening", port }) + "\n");
 }
