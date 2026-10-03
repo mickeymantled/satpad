@@ -82,3 +82,7 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 **Toolchain pin:** Anchor 1.2.0; cargo-build-sbf 4.1.0 (Agave CLI 4.1.2 — earlier docs said 4.3.0 in error); platform-tools **v1.57** (Anchor's default, now explicit in `scripts/build-vault.sh` and CI); rustc 1.89; deployable arch **SBPF v2**. LiteSVM suite 66/66 and the M2 DoD on the real validator pass with v1.57 + v2.
 **Step 4:** finding and pin recorded in `docs/AUDIT_SCOPE.md`.
 **Status:** in effect; upstream issue anza-xyz/platform-tools#129 open.
+
+## D16 — 2026-10-03 — M4 — HTTP/WebSocket framework for the API: Fastify + @fastify/websocket + @fastify/rate-limit
+**Decision:** SPEC names "REST + WebSocket" and rate limiting without a library; Node 22 has no WebSocket server. Fastify with its official websocket and rate-limit plugins is the only new runtime dependency family for `api/`.
+**Status:** approved by human 2026-10-03.
