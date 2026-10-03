@@ -14,7 +14,13 @@
     "fork:smoke": "tsx scripts/fork-smoke.ts",
     "fork:m1": "tsx scripts/fork-create-and-buy.ts",
     "build:vault": "scripts/build-vault.sh",
-    "test:vault": "scripts/build-vault.sh && pnpm --filter @satpad/tests test"
+    "test:vault": "scripts/build-vault.sh && pnpm --filter @satpad/tests test",
+    "vault:initialize": "tsx scripts/vault-initialize.ts",
+    "vault:set-split": "tsx scripts/vault-set-split.ts",
+    "vault:set-wallets": "tsx scripts/vault-set-wallets.ts",
+    "vault:set-pause": "tsx scripts/vault-set-pause.ts",
+    "vault:recover": "tsx scripts/vault-recover.ts",
+    "vault:set-lp": "tsx scripts/vault-set-lp.ts"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"

@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 2 — Vault program (M1 approved by human 2026-10-02)
-**Last completed step:** M2 task 6 — admin: `set_split` (bounds), `set_wallets` (treasury/buyback/rewards only), `set_pause` + `set_coin_pause`, `recover` (paused coin → `ATA(RECOVERY_ADDRESS)` only), `set_lp` (program upgrade authority via `ProgramData`, caps); events; 15 tests incl. mock-multisig upgrade authority, admin refused on `set_lp`, forged ProgramData (66 vault tests). Every instruction in SPEC's table now exists.
-**Next step:** M2 task 7 — SDK builders/decoders/event parsers from the IDL + `scripts/vault-*.ts` admin scripts with `--dry-run`.
+**Last completed step:** M2 task 7 — `@satpad/sdk` `vault/`: committed IDL, builders for all 14 instructions (PDAs derived internally), `decodeConfig`/`decodeCoin`/`decodeRewardsRun`, `parseVaultEvents`; 11 IDL-parity tests (37 sdk tests). `scripts/lib/cli.ts` + `vault-{initialize,set-split,set-wallets,set-pause,recover,set-lp}.ts`, all simulate first and honor `--dry-run`; `set-lp --print-ix` emits the instruction for a Squads proposal.
+**Next step:** M2 task 8 — verifiable build + hash; load the program into `scripts/local-fork.sh`.
 **Blockers:** none. Note for M2 planning: M2's spec DoD says "a devnet coin's creator fee settles four ways" — read as local fork per D1.
 
 ## Toolchain (installed 2026-10-02)
@@ -53,7 +53,7 @@ See `packages/sdk/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V11.
 
 **Tasks (one commit each, LiteSVM test with every task):**
 
-Done: task 1 — `8a5086f` · task 2 — `1bebe2c` · task 3 — `c296453` · task 4 — `d85423a` · task 5 — `f71f35e` · task 6 — (this commit)
+Done: task 1 — `8a5086f` · task 2 — `1bebe2c` · task 3 — `c296453` · task 4 — `d85423a` · task 5 — `f71f35e` · task 6 — `99829cb` · task 7 — (this commit)
 1. Anchor 1.2 workspace (`Anchor.toml`, `programs/satpad_vault`), constants module, `Config` + `initialize` (bounds-checked split, wallets, quote mint + decimals read from the mint account, creator_fee_bps, launch fee), `Initialized` event. Bankrun harness in `tests/vault/` that loads the `.so`, runs `initialize`, decodes Config with the IDL. SDK: `programs/satpad_vault/idl` → `packages/sdk/src/vault/` generated types + `configPda` wiring.
 2. `declare_coin`: `Coin`, `CoinFee` ATA, `PayeePot`, `RewardsPot`; pump `BondingCurve` validation; launch fee transfer; `treasury_only` admin path; `Declared` event. Tests: happy path with a fake BondingCurve account injected into bankrun, refuses second declaration / wrong creator / non-quote mint / fee bps ≠ Config.creator_fee_bps / holder-reward curve / non-admin treasury_only.
 3. `settle`: four-way split (D7), treasury_only path, paused refusal (global and per-coin), dust (0 balance) no-op, `Settled` event. Tests: split math at every bound and edge amount (0, 1, 3, 9999, u64::MAX), parity with `@satpad/sdk` `splitFee` across 1,000 random amounts.

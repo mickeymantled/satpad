@@ -11,6 +11,8 @@ anchor build "$@"
 if [[ "$ARCH" != "v3" ]]; then
   cargo build-sbf --arch "$ARCH" --manifest-path programs/satpad_vault/Cargo.toml
 fi
+# The SDK ships the IDL so consumers never need target/ (gitignored).
+cp target/idl/satpad_vault.json packages/sdk/src/vault/idl.json
 python3 - <<'PY'
 import struct
 d = open("target/deploy/satpad_vault.so", "rb").read()

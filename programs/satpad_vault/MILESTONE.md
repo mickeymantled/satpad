@@ -64,6 +64,12 @@
   paused, only to recovery ATA (admin's own ATA and treasury refused), non-admin; set_lp by mock multisig (full and
   partial), caps, admin and LP wallet refused, immutable program refused, forged ProgramData refused.
 
+- Task 7: `packages/sdk/src/vault/` — `idl.json` (copied by `scripts/build-vault.sh`), `buildInitialize`,
+  `buildDeclareCoin`, `buildSettle`, `buildPayPayee`, `buildRedirectPayee`, `buildSetHolderRewards`, `buildReleaseRewards`,
+  `buildDrawLp`, `buildSetSplit`, `buildSetWallets`, `buildSetPause`, `buildSetCoinPause`, `buildRecover`, `buildSetLp`
+  (+ `vaultProgramData`), decoders to `types.ts` shapes, `parseVaultEvents`. Admin scripts in `scripts/vault-*.ts` with
+  `--dry-run`; `.env.example` lists `DEPLOYER_KEYPAIR`, `ADMIN_KEYPAIR`, `UPGRADE_AUTHORITY_KEYPAIR`, `SATPAD_RECOVERY_ADDRESS`.
+
 ## How to run
 ```bash
 source ~/.cargo/env; export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
@@ -73,5 +79,5 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ```
 
 ## Deferred
-- Tasks 7–9 (STATUS.md).
+- Tasks 8–9 (STATUS.md).
 - VERIFIED V14: which SBPF version mainnet accepts; task 9 runs the v3 default on the real validator.

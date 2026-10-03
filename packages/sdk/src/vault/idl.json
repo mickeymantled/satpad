@@ -1,0 +1,3261 @@
+{
+  "address": "52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93",
+  "metadata": {
+    "name": "satpad_vault",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Satpad fee vault: splits every coin's pump.fun creator fee (in wBTC) on chain"
+  },
+  "instructions": [
+    {
+      "name": "declare_coin",
+      "docs": [
+        "Registers a pump.fun coin whose creator is this program's `CoinFee` PDA. Signed by the launcher and the new",
+        "mint keypair, so only the launch transaction can write the payee choice, once. Collects the launch fee."
+      ],
+      "discriminator": [
+        49,
+        252,
+        216,
+        118,
+        138,
+        227,
+        161,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "docs": [
+            "The launcher. Pays rent and the launch fee."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The new coin's mint keypair. Signing proves this runs in the launch transaction."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "bonding_curve",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  45,
+                  99,
+                  117,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                1,
+                86,
+                224,
+                246,
+                147,
+                102,
+                90,
+                207,
+                68,
+                219,
+                21,
+                104,
+                191,
+                23,
+                91,
+                170,
+                81,
+                137,
+                203,
+                151,
+                245,
+                210,
+                255,
+                59,
+                101,
+                93,
+                43,
+                182,
+                253,
+                109,
+                24,
+                176
+              ]
+            }
+          }
+        },
+        {
+          "name": "coin",
+          "docs": [
+            "`init` makes a second declaration fail."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee_ata",
+          "docs": [
+            "`ATA(coin_fee, quote_mint)`: where pump.fun's permissionless collect pays the creator fee (VERIFIED V4).",
+            "Created here because neither pump program creates it."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "coin_fee"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "payee_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  101,
+                  101,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewards_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  115,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "payee",
+          "type": {
+            "defined": {
+              "name": "PayeeChoice"
+            }
+          }
+        },
+        {
+          "name": "treasury_only",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "draw_lp",
+      "docs": [
+        "LP wallet draws up to `Config.lp_draw_max` from `LpPot`, at least `Config.lp_draw_interval` after the last draw.",
+        "The only instruction that moves BTC out of `LpPot`."
+      ],
+      "discriminator": [
+        163,
+        7,
+        165,
+        69,
+        202,
+        6,
+        8,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "lp_wallet",
+          "docs": [
+            "Only `Config.lp_wallet`."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lp_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  112,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lp_ata",
+          "docs": [
+            "`ATA(Config.lp_wallet, quote)` — the only possible destination."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.lp_wallet",
+                "account": "Config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Creates `Config` and `LpPot`. Once."
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Deployer; pays rent. Runs once because `config` is `init`."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint",
+          "docs": [
+            "The BTC quote mint. Decimals are read from here, never assumed."
+          ]
+        },
+        {
+          "name": "lp_pot",
+          "docs": [
+            "`[\"lp_pot\"]`: token account holding the liquidity share from every coin. Authority is `config`; only",
+            "`draw_lp` can move it out."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  112,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pay_payee",
+      "docs": [
+        "Transfers the whole `PayeePot` to the current payee's quote ATA. Anyone can call; never creates the ATA."
+      ],
+      "discriminator": [
+        170,
+        184,
+        124,
+        41,
+        112,
+        76,
+        98,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "docs": [
+            "Checked before `payee_ata` so a Holders-mode coin fails with `HoldersMode`, not an ATA mismatch."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  101,
+                  101,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_ata",
+          "docs": [
+            "`ATA(coin.payee, quote)`. Must already exist: the vault never pays rent for a payee's ATA (SPEC \"Payouts\")."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "coin.payee",
+                "account": "Coin"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "recover",
+      "docs": [
+        "Only while a coin is paused: moves its `CoinFee` balance to the fixed `RECOVERY_ADDRESS`."
+      ],
+      "discriminator": [
+        108,
+        216,
+        38,
+        58,
+        109,
+        146,
+        116,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "coin_fee"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "recovery_ata",
+          "docs": [
+            "`ATA(RECOVERY_ADDRESS, quote)` — the only possible destination. The admin creates it beforehand."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  170,
+                  82,
+                  97,
+                  37,
+                  127,
+                  22,
+                  35,
+                  218,
+                  244,
+                  160,
+                  10,
+                  93,
+                  26,
+                  81,
+                  250,
+                  132,
+                  79,
+                  58,
+                  4,
+                  52,
+                  153,
+                  71,
+                  202,
+                  136,
+                  3,
+                  217,
+                  183,
+                  17,
+                  9,
+                  99,
+                  180,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redirect_payee",
+      "docs": [
+        "Current payee hands the deployer share to `new_payee`, receiving whatever is waiting first. Irreversible."
+      ],
+      "discriminator": [
+        136,
+        158,
+        254,
+        200,
+        183,
+        197,
+        0,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "docs": [
+            "The current payee. Nobody else — not the deployer, not the admin — can call this."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  101,
+                  101,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_ata",
+          "docs": [
+            "The old payee's quote ATA, paid in the same instruction so a change can never be blocked by a withheld payout."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "payee"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "new_payee",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "release_rewards",
+      "docs": [
+        "Rewards wallet moves a Holders-mode coin's `RewardsPot` out for one run, after writing the snapshot hash.",
+        "At most once per `REWARDS_RUN_MIN_INTERVAL` per coin."
+      ],
+      "discriminator": [
+        174,
+        57,
+        169,
+        234,
+        121,
+        104,
+        172,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "rewards_wallet",
+          "docs": [
+            "Only `Config.rewards_wallet`. Pays rent for the `RewardsRun` record."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewards_run",
+          "docs": [
+            "Written before the pot moves; `init` with `run_index = coin.rewards_run_count` makes each run unique."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  115,
+                  95,
+                  114,
+                  117,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              },
+              {
+                "kind": "account",
+                "path": "coin.rewards_run_count",
+                "account": "Coin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewards_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  115,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewards_ata",
+          "docs": [
+            "`ATA(Config.rewards_wallet, quote)` — the only possible destination."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.rewards_wallet",
+                "account": "Config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "snapshot_sha256",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_coin_pause",
+      "docs": [
+        "Pauses or unpauses one coin's `settle`."
+      ],
+      "discriminator": [
+        27,
+        188,
+        14,
+        158,
+        117,
+        242,
+        252,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_holder_rewards",
+      "docs": [
+        "Current payee makes the deployer share pay holders forever, receiving whatever is waiting first."
+      ],
+      "discriminator": [
+        91,
+        116,
+        235,
+        66,
+        192,
+        120,
+        145,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "docs": [
+            "The current payee. Nobody else — not the deployer, not the admin — can call this."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  101,
+                  101,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee_ata",
+          "docs": [
+            "The old payee's quote ATA, paid in the same instruction so a change can never be blocked by a withheld payout."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "payee"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_lp",
+      "docs": [
+        "Sets the LP wallet and draw limits within the program caps."
+      ],
+      "discriminator": [
+        16,
+        75,
+        87,
+        38,
+        25,
+        135,
+        50,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program",
+          "address": "52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93"
+        },
+        {
+          "name": "program_data"
+        }
+      ],
+      "args": [
+        {
+          "name": "lp_wallet",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "lp_draw_max",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "lp_draw_interval",
+          "type": {
+            "option": "i64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_pause",
+      "docs": [
+        "Pauses or unpauses every coin's `settle`."
+      ],
+      "discriminator": [
+        63,
+        32,
+        154,
+        2,
+        56,
+        103,
+        79,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_split",
+      "docs": [
+        "Changes the split within the program bounds. Applies to every later `settle`."
+      ],
+      "discriminator": [
+        133,
+        67,
+        66,
+        245,
+        114,
+        175,
+        32,
+        51
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "split",
+          "type": {
+            "defined": {
+              "name": "Split"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_wallets",
+      "docs": [
+        "Changes treasury, buyback and rewards wallets. Never the recovery address (a constant) or the LP wallet."
+      ],
+      "discriminator": [
+        249,
+        24,
+        183,
+        250,
+        74,
+        184,
+        250,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "treasury",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "buyback_wallet",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "rewards_wallet",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Splits whatever sits in the coin's `CoinFee` ATA by the current `Config.split`. Anyone can call."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "coin"
+          ]
+        },
+        {
+          "name": "coin",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  102,
+                  101,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_fee_ata",
+          "docs": [
+            "Where pump.fun's collect paid the creator fee."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "coin_fee"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "lp_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  112,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "buyback_ata",
+          "docs": [
+            "`ATA(Config.buyback_wallet, quote)`. Must already exist; the vault never pays rent for a wallet's ATA."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.buyback_wallet",
+                "account": "Config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "treasury_ata",
+          "docs": [
+            "`ATA(Config.treasury, quote)`."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config.treasury",
+                "account": "Config"
+              },
+              {
+                "kind": "account",
+                "path": "quote_token_program"
+              },
+              {
+                "kind": "account",
+                "path": "quote_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "payee_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  101,
+                  101,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewards_pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  115,
+                  95,
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote_mint"
+        },
+        {
+          "name": "quote_token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Coin",
+      "discriminator": [
+        215,
+        195,
+        53,
+        238,
+        217,
+        196,
+        213,
+        51
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "RewardsRun",
+      "discriminator": [
+        95,
+        95,
+        194,
+        95,
+        218,
+        107,
+        50,
+        177
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Declared",
+      "discriminator": [
+        35,
+        118,
+        63,
+        240,
+        242,
+        167,
+        0,
+        99
+      ]
+    },
+    {
+      "name": "HolderRewardsSet",
+      "discriminator": [
+        215,
+        142,
+        103,
+        12,
+        30,
+        133,
+        94,
+        118
+      ]
+    },
+    {
+      "name": "Initialized",
+      "discriminator": [
+        208,
+        213,
+        115,
+        98,
+        115,
+        82,
+        201,
+        209
+      ]
+    },
+    {
+      "name": "LpDrawn",
+      "discriminator": [
+        234,
+        134,
+        243,
+        139,
+        71,
+        56,
+        16,
+        27
+      ]
+    },
+    {
+      "name": "LpParamsSet",
+      "discriminator": [
+        210,
+        91,
+        229,
+        55,
+        68,
+        137,
+        196,
+        239
+      ]
+    },
+    {
+      "name": "Paused",
+      "discriminator": [
+        172,
+        248,
+        5,
+        253,
+        49,
+        255,
+        255,
+        232
+      ]
+    },
+    {
+      "name": "PayeePaid",
+      "discriminator": [
+        60,
+        129,
+        205,
+        198,
+        109,
+        22,
+        177,
+        14
+      ]
+    },
+    {
+      "name": "PayeeRedirected",
+      "discriminator": [
+        115,
+        27,
+        252,
+        38,
+        15,
+        176,
+        254,
+        202
+      ]
+    },
+    {
+      "name": "Recovered",
+      "discriminator": [
+        117,
+        0,
+        54,
+        192,
+        187,
+        24,
+        240,
+        130
+      ]
+    },
+    {
+      "name": "RewardsReleased",
+      "discriminator": [
+        18,
+        186,
+        40,
+        231,
+        125,
+        191,
+        62,
+        220
+      ]
+    },
+    {
+      "name": "Settled",
+      "discriminator": [
+        232,
+        210,
+        40,
+        17,
+        142,
+        124,
+        145,
+        238
+      ]
+    },
+    {
+      "name": "SplitChanged",
+      "discriminator": [
+        88,
+        43,
+        252,
+        174,
+        179,
+        132,
+        216,
+        21
+      ]
+    },
+    {
+      "name": "WalletsChanged",
+      "discriminator": [
+        143,
+        155,
+        118,
+        199,
+        135,
+        156,
+        96,
+        248
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "SplitSum",
+      "msg": "split shares must sum to 10000 bps"
+    },
+    {
+      "code": 6001,
+      "name": "LiquidityTooLow",
+      "msg": "liquidity share below the program minimum"
+    },
+    {
+      "code": 6002,
+      "name": "OperatorTooHigh",
+      "msg": "operator share above the program maximum"
+    },
+    {
+      "code": 6003,
+      "name": "CreatorFeeOutOfRange",
+      "msg": "creator fee bps must be in 1..=MAX_CREATOR_FEE_BPS"
+    },
+    {
+      "code": 6004,
+      "name": "LpDrawMaxTooHigh",
+      "msg": "lp_draw_max above the program cap"
+    },
+    {
+      "code": 6005,
+      "name": "LpDrawIntervalTooShort",
+      "msg": "lp_draw_interval below the program minimum"
+    },
+    {
+      "code": 6006,
+      "name": "Overflow",
+      "msg": "arithmetic overflow"
+    },
+    {
+      "code": 6007,
+      "name": "WrongQuoteMint",
+      "msg": "wrong quote mint"
+    },
+    {
+      "code": 6008,
+      "name": "BadCurveData",
+      "msg": "bonding curve account data is not a pump.fun BondingCurve"
+    },
+    {
+      "code": 6009,
+      "name": "WrongCurveCreator",
+      "msg": "bonding curve creator is not this coin's CoinFee PDA"
+    },
+    {
+      "code": 6010,
+      "name": "WrongCurveQuoteMint",
+      "msg": "bonding curve quote mint is not the configured BTC quote mint"
+    },
+    {
+      "code": 6011,
+      "name": "CreatorFeeMismatch",
+      "msg": "bonding curve creator_fee_bps does not equal Config.creator_fee_bps"
+    },
+    {
+      "code": 6012,
+      "name": "HolderRewardCurve",
+      "msg": "holder-reward curves cannot be registered: pump.fun owns their creator"
+    },
+    {
+      "code": 6013,
+      "name": "MayhemCurve",
+      "msg": "mayhem-mode curves cannot be registered"
+    },
+    {
+      "code": 6014,
+      "name": "NotAdmin",
+      "msg": "signer is not the admin"
+    },
+    {
+      "code": 6015,
+      "name": "WrongTreasury",
+      "msg": "treasury account does not match Config.treasury"
+    },
+    {
+      "code": 6016,
+      "name": "Paused",
+      "msg": "vault is paused"
+    },
+    {
+      "code": 6017,
+      "name": "CoinPaused",
+      "msg": "coin is paused"
+    },
+    {
+      "code": 6018,
+      "name": "NotPayee",
+      "msg": "signer is not the coin's current payee"
+    },
+    {
+      "code": 6019,
+      "name": "HoldersMode",
+      "msg": "coin is in holder-rewards mode; nobody controls the deployer share"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidPayee",
+      "msg": "new payee must be a real, different wallet"
+    },
+    {
+      "code": 6021,
+      "name": "NotRewardsWallet",
+      "msg": "signer is not Config.rewards_wallet"
+    },
+    {
+      "code": 6022,
+      "name": "NotLpWallet",
+      "msg": "signer is not Config.lp_wallet"
+    },
+    {
+      "code": 6023,
+      "name": "RewardsPotBelowMin",
+      "msg": "rewards pot below the minimum release amount"
+    },
+    {
+      "code": 6024,
+      "name": "RewardsTooSoon",
+      "msg": "last rewards run is less than REWARDS_RUN_MIN_INTERVAL seconds old"
+    },
+    {
+      "code": 6025,
+      "name": "NotHoldersMode",
+      "msg": "coin is not in holder-rewards mode"
+    },
+    {
+      "code": 6026,
+      "name": "LpDrawTooLarge",
+      "msg": "draw exceeds Config.lp_draw_max"
+    },
+    {
+      "code": 6027,
+      "name": "LpDrawTooSoon",
+      "msg": "last LP draw is less than Config.lp_draw_interval seconds old"
+    },
+    {
+      "code": 6028,
+      "name": "ZeroAmount",
+      "msg": "amount must be greater than zero"
+    },
+    {
+      "code": 6029,
+      "name": "NotUpgradeAuthority",
+      "msg": "signer is not the program's upgrade authority"
+    },
+    {
+      "code": 6030,
+      "name": "CoinNotPaused",
+      "msg": "recover requires the coin to be paused"
+    },
+    {
+      "code": 6031,
+      "name": "WrongRecoveryDestination",
+      "msg": "recovery destination must be the ATA of the fixed RECOVERY_ADDRESS"
+    },
+    {
+      "code": 6032,
+      "name": "InvalidWallet",
+      "msg": "wallet must not be the default pubkey"
+    }
+  ],
+  "types": [
+    {
+      "name": "Coin",
+      "docs": [
+        "`[\"coin\", mint]`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "deployer",
+            "type": "pubkey"
+          },
+          {
+            "name": "payee",
+            "docs": [
+              "Current payee when `payee_mode == Wallet`; ignored for `Holders`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "payee_mode",
+            "type": {
+              "defined": {
+                "name": "PayeeMode"
+              }
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "declared",
+            "type": "bool"
+          },
+          {
+            "name": "treasury_only",
+            "docs": [
+              "$SATPAD only: 100% of the creator fee to treasury. Admin-set at declaration, never changed."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "last_rewards_run_ts",
+            "type": "i64"
+          },
+          {
+            "name": "rewards_run_count",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "coin_fee_bump",
+            "type": "u8"
+          },
+          {
+            "name": "payee_pot_bump",
+            "type": "u8"
+          },
+          {
+            "name": "rewards_pot_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "docs": [
+        "Singleton `[\"config\"]`. SPEC \"Accounts (PDAs)\" plus `creator_fee_bps` (D3) and the $SATPAD pool addresses."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "Hot key: pause, split, wallet changes. Cannot upgrade, cannot set LP params, cannot touch payees."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "Operator share and launch fees."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_wallet",
+            "docs": [
+              "Buyback share; keeper swaps it for $SATPAD and burns."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "rewards_wallet",
+            "docs": [
+              "Only destination of `release_rewards`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "lp_wallet",
+            "docs": [
+              "Only signer of `draw_lp`. Set by the upgrade authority via `set_lp`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "docs": [
+              "The BTC quote mint every pot is denominated in. All token accounts are validated against it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_decimals",
+            "docs": [
+              "Read from the mint at init (8 for wBTC). Never assumed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "split",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          },
+          {
+            "name": "lp_draw_max",
+            "docs": [
+              "Max base units per `draw_lp`. ≤ LP_DRAW_MAX_CAP."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lp_draw_interval",
+            "docs": [
+              "Seconds between draws. ≥ MIN_LP_DRAW_INTERVAL."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_lp_draw_ts",
+            "type": "i64"
+          },
+          {
+            "name": "creator_fee_bps",
+            "docs": [
+              "Creator fee every registered coin must have been created with (D3, D9). 1..=MAX_CREATOR_FEE_BPS."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Global pause: every coin's `settle` refuses."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "launch_fee_lamports",
+            "docs": [
+              "Lamports `declare_coin` transfers to treasury."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "satpad_mint",
+            "docs": [
+              "$SATPAD mint, PumpSwap pool and LP mint once bootstrapped; default until then."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "satpad_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "satpad_lp_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "lp_pot_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Declared",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "deployer",
+            "type": "pubkey"
+          },
+          {
+            "name": "payee",
+            "type": "pubkey"
+          },
+          {
+            "name": "payee_mode",
+            "type": {
+              "defined": {
+                "name": "PayeeMode"
+              }
+            }
+          },
+          {
+            "name": "treasury_only",
+            "type": "bool"
+          },
+          {
+            "name": "creator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "launch_fee_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HolderRewardsSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_payee",
+            "type": "pubkey"
+          },
+          {
+            "name": "paid_out",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "rewards_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "lp_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "split",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          },
+          {
+            "name": "lp_draw_max",
+            "type": "u64"
+          },
+          {
+            "name": "lp_draw_interval",
+            "type": "i64"
+          },
+          {
+            "name": "creator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "launch_fee_lamports",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Initialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "quote_decimals",
+            "type": "u8"
+          },
+          {
+            "name": "split",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          },
+          {
+            "name": "creator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "lp_draw_max",
+            "type": "u64"
+          },
+          {
+            "name": "lp_draw_interval",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LpDrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "lp_pot_remaining",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LpParamsSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lp_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "lp_draw_max",
+            "type": "u64"
+          },
+          {
+            "name": "lp_draw_interval",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Paused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "docs": [
+              "`Pubkey::default()` for the global flag."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayeeChoice",
+      "docs": [
+        "Deployer's choice at launch, written once by `declare_coin`."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Me"
+          },
+          {
+            "name": "Wallet",
+            "fields": [
+              "pubkey"
+            ]
+          },
+          {
+            "name": "Holders"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayeeMode",
+      "docs": [
+        "Who receives the deployer share. `Holders` is permanent (SPEC \"Payee modes\")."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Wallet"
+          },
+          {
+            "name": "Holders"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayeePaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payee",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PayeeRedirected",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_payee",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_payee",
+            "type": "pubkey"
+          },
+          {
+            "name": "paid_out",
+            "docs": [
+              "Paid to the old payee in the same instruction."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Recovered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RewardsReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "run_index",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_sha256",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RewardsRun",
+      "docs": [
+        "`[\"rewards_run\", mint, run_index as u64 LE]` (DECISIONS D8). One per holder-rewards release; the snapshot hash is",
+        "written here before the pot moves, so anyone can audit who was paid."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "run_index",
+            "type": "u64"
+          },
+          {
+            "name": "snapshot_sha256",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "amount_released",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "liquidity",
+            "type": "u64"
+          },
+          {
+            "name": "buyback",
+            "type": "u64"
+          },
+          {
+            "name": "operator",
+            "type": "u64"
+          },
+          {
+            "name": "deployer",
+            "type": "u64"
+          },
+          {
+            "name": "deployer_destination",
+            "docs": [
+              "`PayeePot`, `RewardsPot`, or the treasury ATA for a treasury-only coin."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "split",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Split",
+      "docs": [
+        "Fee split in basis points of the creator fee. Sum is always 10000."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "liquidity_bps",
+            "type": "u16"
+          },
+          {
+            "name": "buyback_bps",
+            "type": "u16"
+          },
+          {
+            "name": "operator_bps",
+            "type": "u16"
+          },
+          {
+            "name": "deployer_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SplitChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          },
+          {
+            "name": "new",
+            "type": {
+              "defined": {
+                "name": "Split"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WalletsChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyback_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "rewards_wallet",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}
