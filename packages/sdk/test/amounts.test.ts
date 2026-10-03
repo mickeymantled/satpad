@@ -57,14 +57,20 @@ describe("bps math", () => {
     expect(() => applyBps(1n, 10_001)).toThrow(RangeError);
     expect(() => applyBps(1n, -1)).toThrow(RangeError);
   });
-  it("splitFee parts always sum to the input; deployer absorbs rounding", () => {
-    for (const amt of [0n, 1n, 3n, 7n, 9_999n, 10_000n, 123_456_789n, 2n ** 64n - 1n]) {
+  it("splitFee parts always sum to the input; liquidity absorbs rounding so its floor holds (D7)", () => {
+    for (const amt of [0n, 1n, 3n, 7n, 9_999n, 10_000n, 10_001n, 123_456_789n, 2n ** 64n - 1n]) {
       const s = splitFee(amt, DEFAULT_SPLIT);
       expect(s.liquidity + s.buyback + s.operator + s.deployer).toBe(amt);
-      expect(s.deployer).toBeGreaterThanOrEqual(applyBps(amt, DEFAULT_SPLIT.deployerBps));
+      expect(s.liquidity).toBeGreaterThanOrEqual(applyBps(amt, DEFAULT_SPLIT.liquidityBps));
+      expect(s.buyback).toBe(applyBps(amt, DEFAULT_SPLIT.buybackBps));
+      expect(s.operator).toBe(applyBps(amt, DEFAULT_SPLIT.operatorBps));
+      expect(s.deployer).toBe(applyBps(amt, DEFAULT_SPLIT.deployerBps));
     }
-    const s = splitFee(10_000n, DEFAULT_SPLIT);
-    expect(s).toEqual({ liquidity: 2_500n, buyback: 2_500n, operator: 1_000n, deployer: 4_000n });
+    expect(splitFee(10_000n, DEFAULT_SPLIT)).toEqual({ liquidity: 2_500n, buyback: 2_500n, operator: 1_000n, deployer: 4_000n });
+    // 1 sat: every floored share is 0, the whole sat goes to liquidity
+    expect(splitFee(1n, DEFAULT_SPLIT)).toEqual({ liquidity: 1n, buyback: 0n, operator: 0n, deployer: 0n });
+    // 3 sats: deployer floor(1.2)=1, others 0, liquidity gets 2 (≥ floor(0.75)=0)
+    expect(splitFee(3n, DEFAULT_SPLIT)).toEqual({ liquidity: 2n, buyback: 0n, operator: 0n, deployer: 1n });
   });
   it("enforces the spec bounds exactly at the edges", () => {
     expect(() => assertValidSplit(DEFAULT_SPLIT)).not.toThrow();

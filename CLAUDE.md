@@ -11,7 +11,7 @@ Follow the loop in order every time:
 4. Implement one task with its test. Run tests, lint, typecheck.
 5. Re-read the spec paragraph you implemented. Fix gaps or log them in DECISIONS.md.
 6. Update STATUS.md and the package MILESTONE.md.
-7. Commit: one task per commit, message "m<N>: <task>". No secrets. No red tests.
+7. Commit: one task per commit, message "m<N>: <task>". No secrets. No red tests. Push to origin/main after every commit so GitHub is always current.
 8. Report in a few lines and continue to the next task.
 9. When the plan is empty, run the milestone definition of done from SPEC.md. Green: advance STATUS.md to the next milestone and stop for review. Red: add failures to the plan.
 

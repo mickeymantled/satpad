@@ -56,15 +56,16 @@ export function applyBps(amount: bigint, bps: number): bigint {
 }
 
 /**
- * Split an amount by the vault's four shares. The last share takes the rounding remainder so the parts always
- * sum to the input exactly — the program must do the same (SPEC "Fee split": four shares sum to 10000 bps).
+ * Split an amount by the vault's four shares. Buyback, operator and deployer are floored; the liquidity share takes
+ * the rounding remainder so the parts sum to the input exactly and liquidity never falls below its bps floor
+ * (DECISIONS D7). The program must do the same (SPEC "Fee split": four shares sum to 10000 bps).
  */
 export function splitFee(amount: bigint, split: FeeSplitBps): FeeSplit {
   assertValidSplit(split);
-  const liquidity = applyBps(amount, split.liquidityBps);
   const buyback = applyBps(amount, split.buybackBps);
   const operator = applyBps(amount, split.operatorBps);
-  const deployer = amount - liquidity - buyback - operator;
+  const deployer = applyBps(amount, split.deployerBps);
+  const liquidity = amount - buyback - operator - deployer;
   return { liquidity, buyback, operator, deployer };
 }
 

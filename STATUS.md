@@ -1,6 +1,6 @@
 # Status
 
-**Current milestone:** 2 — Vault program (awaiting human review of M1 close before planning)
+**Current milestone:** 2 — Vault program (M1 approved by human 2026-10-02)
 **Last completed step:** Milestone 1 closed. Definition of done met on the local mainnet fork via `pnpm fork:m1`; evidence in `packages/sdk/MILESTONE.md`. 26 sdk tests, typecheck and lint green.
 **Next step:** Human runs the review gate for M1 (WORKFLOW.md). Then: plan M2 — `programs/satpad_vault` Anchor 1.2 program with all instructions, bounds, events; bankrun tests; verifiable build. Re-check VERIFIED V12 (devnet Custom Pairs) at M2 close.
 **Blockers:** none. Note for M2 planning: M2's spec DoD says "a devnet coin's creator fee settles four ways" — read as local fork per D1.
@@ -26,7 +26,7 @@ DoD (DECISIONS D1): coin created on the local mainnet fork with `quote_mint = BT
 - Task 7: MILESTONE.md evidence, close M1 — (this commit)
 
 ### DECISIONS this milestone
-D1 local fork target (approved) · D2 pin wBTC (approved) · D3 100 bps + program cap (approved) · D4 no CPI for create_v2 (in effect) · D5 Anchor 1.2 / web3.js v1 (approved) · D6 root tooling (in effect)
+D1 local fork target (approved) · D2 pin wBTC (approved) · D3 100 bps + program cap (approved) · D4 no CPI for create_v2 (in effect) · D5 Anchor 1.2 / web3.js v1 (approved) · D6 root tooling (in effect) · D7 split remainder → liquidity (approved) · D8 rewards_run u64 LE (approved)
 
 ### Tests added
 `packages/sdk/test/{quoteMints,pda,amounts,pump}.test.ts` — 26 tests. Plus two fork scripts that assert on-chain state (`fork-smoke.ts` raw SDK, `fork-create-and-buy.ts` via @satpad/sdk).

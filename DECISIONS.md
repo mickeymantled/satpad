@@ -32,3 +32,11 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D6 — 2026-10-02 — M1 — Root tooling added for the fork smoke test before the full monorepo scaffold
 **Decision:** Root `package.json` (private, pnpm 11.3.0, CJS — `@coral-xyz/anchor` fails to import its `BN` under ESM via tsx), `tsconfig.json` strict, `pnpm-workspace.yaml`, and `scripts/fork-*.ts`. Task 1 of the M1 plan (full workspace scaffold) will build on these rather than replace them.
 **Status:** approved in effect (tooling only).
+
+## D7 — 2026-10-02 — M1→M2 — Fee-split rounding remainder goes to the liquidity share
+**Decision (human):** In `settle` (and `@satpad/sdk` `splitFee`), buyback, operator and deployer shares are floored `amount * bps / 10000`; liquidity = amount − the other three. The remainder (up to 3 base units) therefore always lands in `LpPot`, so the 2500 bps liquidity floor holds exactly at every amount. Earlier SDK draft gave the remainder to the deployer; reversed.
+**Status:** approved by human 2026-10-02. Program must mirror; bankrun test asserts `liquidity ≥ floor(amount·2500/10000)` across edge amounts.
+
+## D8 — 2026-10-02 — M1 — `rewards_run` PDA index encoded as u64 little-endian
+**Decision:** `["rewards_run", mint, run_index.to_le_bytes()]` with `run_index: u64`. Spec left the encoding unspecified.
+**Status:** approved by human 2026-10-02.

@@ -11,7 +11,7 @@
 - `src/pda.ts`: `configPda`, `coinFeePda`, `coinPda`, `payeePotPda`, `rewardsPotPda`, `lpPotPda`,
   `rewardsRunPda(mint, u64)`, `coinFeeAta`. `rewards_run` index encoded u64 LE (spec unspecified; program must match).
 - `src/amounts.ts`: bigint-only money — `Sats` brand, `parseBtc`/`parseSats`/`toUi`/`splitBtc`, `applyBps`,
-  `splitFee` (deployer share absorbs floor remainder so parts sum exactly; program mirrors this), `assertValidSplit`
+  `splitFee` (liquidity share absorbs the floor remainder so parts sum exactly and the 2500 bps floor holds — D7; program mirrors this), `assertValidSplit`
   (liquidity ≥ 2500, operator ≤ 2000, sum 10000).
 - `src/types.ts`: `Config`, `Coin`, `RewardsRun`, `PayeeMode`, `Stage`. `Config.creatorFeeBps` added per D3.
 - `src/pump.ts`: pump.fun v2 builders pinned to wBTC — `buildCreateV2` (mayhem/holder-reward/cashback off, fee bps
