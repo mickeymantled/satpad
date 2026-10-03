@@ -55,10 +55,21 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 **Status:** in effect (covered by D9 approval).
 
 ## D11 — 2026-10-02 — M2 — Program tests run against an SBPF v2 build; Anchor 1.2 defaults to v3
-**Finding:** With the identical source, the LiteSVM 1.5 suite passes 28/28 on SBPF v1 and v2 builds and fails on v3 (and v0) with corrupted stack temporaries (a `Pubkey` garbage past byte 8 in a seeds check; an access violation in `settle`). anchor-syn 1.2's constraint codegen was read and is inline, so the program's `mint.key().as_ref()` idiom is sound; the VM is at fault.
+**Finding:** With the identical source, the LiteSVM 1.5 suite passes 28/28 on SBPF v1 and v2 builds and fails on v3 (and v0) with corrupted stack temporaries (a `Pubkey` garbage past byte 8 in a seeds check; an access violation in `settle`). anchor-syn 1.2's constraint codegen was read and is inline, so the program's `mint.key().as_ref()` idiom is sound.
+**Correction (task 9, 2026-10-02):** the v3 binary shows the *same* `ConstraintSeeds`/`ConstraintHasOne` corruption on the real `solana-test-validator` 4.3 (`settle` after a successful launch), while the v2 binary passes the full M2 definition of done there. So this is not a LiteSVM bug: Anchor 1.2 + platform-tools' SBPF **v3** output of this program is miscompiled or hits a runtime bug. Until the cause is found, every build is **v2** (`scripts/build-vault.sh` default); V14 and the audit scope (M10) must cover it. `initialize`/`set_split`/`set_pause` happened to work on v3 — the failure needs a `has_one`/`seeds` constraint reading an `UncheckedAccount` key.
 **Decision:** `scripts/build-vault.sh` = `anchor build` (IDL) + `cargo build-sbf --arch v2`. `pnpm test:vault` uses it. Task 9 (DoD on the real `solana-test-validator` 4.3 fork) must also run once with `SBPF_ARCH=v3` so the default binary is exercised on the real runtime. Which SBPF version mainnet accepts for deploy is VERIFIED V14 (open) and decides the M10 build arch.
 **Status:** in effect (test-infrastructure choice; no spec deviation).
 
 ## D12 — 2026-10-02 — M2 — `release_rewards` "pot above min" is a program constant `REWARDS_MIN_RELEASE = 1_000` sats
 **Decision:** SPEC lists "pot above min" as a `release_rewards` requirement but defines the $25 (Pyth) threshold only on the keeper side. The program cannot read USD, so it enforces a fixed dust guard of 1,000 base units (~$1 at $100k/BTC); the keeper applies the $25 rule before calling. Raising the constant is a program upgrade.
 **Status:** proposed (value); mechanism in effect.
+
+## D13 — 2026-10-02 — M2 — Verifiable build deferred to an amd64 host; local build hashes recorded
+**Finding:** `anchor build --verifiable` uses `quay.io/ottersec/anchor:v1.2.0`, which has no arm64 manifest; under `DOCKER_DEFAULT_PLATFORM=linux/amd64` the container never started on this Apple Silicon machine. `solana-verify` (installed, v0.5.2) needs the same kind of image.
+**Decision:** M2's "verifiable build hash recorded" is satisfied provisionally with the local deterministic build hash in `programs/satpad_vault/MILESTONE.md`; the Docker-reproducible hash is produced on an amd64 host (CI runner or Linux box) at M10, where SPEC places "Verified build published". Until then no mainnet deploy anyway.
+**Status:** proposed — human to accept the deferral or supply an amd64 host earlier.
+
+## D14 — 2026-10-02 — M2 — Launch is a v0 transaction with a lookup table of launch-static accounts
+**Finding:** `create_v2` + `declare_coin` + `buy_v2` is ~1770 bytes legacy; the limit is 1232. SPEC anticipates this ("use an address lookup table").
+**Decision:** `@satpad/sdk` `staticAccounts()` derives the accounts common to every launch (pump globals, fee config, programs, quote mint, vault Config, fee recipients — 23 entries) and `buildV0Transaction()` compiles a v0 message with that table: launch = 1186 bytes, one atomic transaction, per-mint and per-user accounts inline. The fork creates the table per run; **production creates it once and pins its address** (env `SATPAD_LAUNCH_ALT`, M5). If pump.fun changes its fee recipients the table must be extended.
+**Status:** in effect (mechanism the spec names).

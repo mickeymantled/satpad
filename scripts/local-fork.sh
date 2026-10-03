@@ -27,7 +27,15 @@ URL="${FORK_RPC_URL:-https://api.mainnet-beta.solana.com}"
 DIR=".fork-ledger"
 MINT_JSON="$DIR/wbtc-mint.json"
 
+# satpad_vault: loaded as an upgradeable program with the dev upgrade-authority key so set_lp can be exercised.
+# Build first: scripts/build-vault.sh (SBPF v2, what LiteSVM runs) or SBPF_ARCH=v3 scripts/build-vault.sh (Anchor default).
+VAULT_SO="target/deploy/satpad_vault.so"
+VAULT_ID="52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93"
+UPGRADE_AUTHORITY="${VAULT_UPGRADE_AUTHORITY:-U3CGV1FvYBnHDf9CNmEwEMW97CXE1BWo1pK7QqvNKav}"   # keys/upgrade-authority-dev.json
+[[ $DRY -eq 1 || -f "$VAULT_SO" ]] || { echo "missing $VAULT_SO — run scripts/build-vault.sh" >&2; exit 1; }
+
 CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port 8899
+  --upgradeable-program "$VAULT_ID" "$VAULT_SO" "$UPGRADE_AUTHORITY"  # satpad_vault (this repo)
   # --- programs (program + programdata) ---
   --clone-upgradeable-program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P  # pump.fun
   --clone-upgradeable-program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA  # PumpSwap (not read by create/buy; cloned for later milestones)
