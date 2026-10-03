@@ -1,6 +1,6 @@
-# [DRAFT — to file at anza-xyz/platform-tools] SBPF v3 build of an Anchor 1.2 program corrupts account keys during account validation; identical source on SBPF v2 is fine
+SBPF v3 build of an Anchor 1.2 program corrupts account keys during account validation; identical source on SBPF v2 is fine
 
-Reproduction: https://github.com/mickeymantled/satpad (commit <fill>). Cross-ref: #114 "Corrupted reference constants".
+Reproduction: https://github.com/mickeymantled/satpad (commit fe7b16a). Cross-ref: #114 "Corrupted reference constants".
 
 ## Reproduce
 ```bash
