@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 1 — Repo and SDK
-**Last completed step:** Task 3 — `packages/sdk/src/pda.ts`: all seven spec PDAs + `coinFeeAta` (off-curve wBTC ATA pump's collect pays into); 6 tests. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored; mainnet uses a fresh key).
-**Next step:** Task 4 — Config/Coin types and bigint amount helpers.
+**Last completed step:** Task 4 — `amounts.ts` (branded `Sats`, `parseBtc`/`toUi` exact at 8 decimals, `applyBps`, `splitFee` with remainder to deployer, `assertValidSplit` with spec bounds) + `types.ts` (Config, Coin, RewardsRun, PayeeMode, Stage); 9 tests. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored).
+**Next step:** Task 5 — pump.fun v2 wrappers in `packages/sdk/src/pump.ts`.
 **Blockers:** none.
 
 ## Milestone 1 definition of done (per DECISIONS D1)
@@ -29,4 +29,5 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - D2/D3/D5 approvals, SPEC fee table — `4a94ee2`
 - Task 1: workspace scaffold — `8e8c361`
 - Task 2: quoteMints.ts — `a83c967`
-- Task 3: pda.ts — (this commit)
+- Task 3: pda.ts — `e27b4e0`
+- Task 4: amounts.ts + types.ts — (this commit)
