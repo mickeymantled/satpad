@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 1 — Repo and SDK
-**Last completed step:** Task 2 — `packages/sdk/src/quoteMints.ts`: pinned wBTC mint, 8 decimals, fee bps constants, pump program ids and singleton PDAs; 4 tests cross-check against `@pump-fun/pump-sdk` exports.
-**Next step:** Task 3 — satpad_vault PDA derivations.
+**Last completed step:** Task 3 — `packages/sdk/src/pda.ts`: all seven spec PDAs + `coinFeeAta` (off-curve wBTC ATA pump's collect pays into); 6 tests. Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` (keypair `keys/satpad_vault-dev.json`, gitignored; mainnet uses a fresh key).
+**Next step:** Task 4 — Config/Coin types and bigint amount helpers.
 **Blockers:** none.
 
 ## Milestone 1 definition of done (per DECISIONS D1)
@@ -28,4 +28,5 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - Local fork + smoke test + DECISIONS D1–D6 + V13 — `ca974bf`
 - D2/D3/D5 approvals, SPEC fee table — `4a94ee2`
 - Task 1: workspace scaffold — `8e8c361`
-- Task 2: quoteMints.ts — (this commit)
+- Task 2: quoteMints.ts — `a83c967`
+- Task 3: pda.ts — (this commit)
