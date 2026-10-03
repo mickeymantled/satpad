@@ -38,7 +38,11 @@ jobs:
       - name: Download vault build artifact
         # The v2 .so from verify-build (same commit when available, else latest). Falls back to a local cargo build.
         uses: dawidd6/action-download-artifact@v6
-        with: { workflow: verify-build.yml, name: satpad_vault-${{ github.sha }}, path: target/deploy, if_no_artifact_found: warn }
+        with:
+          workflow: verify-build.yml
+          name: satpad_vault-${{ github.sha }}
+          path: target/deploy
+          if_no_artifact_found: warn
         continue-on-error: true
       - name: Build vault if no artifact
         if: hashFiles('target/deploy/satpad_vault.so') == ''
@@ -60,4 +64,7 @@ jobs:
           pnpm fork:check --json reconcile.json
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: reconcile-${{ github.sha }}, path: reconcile.json, if-no-files-found: ignore }
+        with:
+          name: reconcile-${{ github.sha }}
+          path: reconcile.json
+          if-no-files-found: ignore
