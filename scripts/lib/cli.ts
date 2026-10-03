@@ -3,7 +3,6 @@
 import { readFileSync } from "node:fs";
 import { Connection, Keypair, PublicKey, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { configPda, decodeConfig, parseVaultEvents, type Config } from "@satpad/sdk";
-void configPda;
 
 export const DRY_RUN = process.argv.includes("--dry-run");
 

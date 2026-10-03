@@ -5,7 +5,7 @@ import BN from "bn.js";
 import {
   DEFAULT_SPLIT, SATPAD_VAULT_PROGRAM_ID, VAULT_IDL, buildDeclareCoin, buildDrawLp, buildInitialize, buildPayPayee, buildRecover, buildRedirectPayee,
   buildReleaseRewards, buildSetCoinPause, buildSetHolderRewards, buildSetLp, buildSetPause, buildSetSplit, buildSetWallets, buildSettle,
-  coinPda, configPda, decodeCoin, decodeConfig, decodeRewardsRun, parseVaultEvents, rewardsRunPda, vaultProgramData,
+  coinPda, decodeCoin, decodeConfig, decodeRewardsRun, parseVaultEvents, rewardsRunPda, vaultProgramData,
 } from "../src";
 
 type IdlIx = { name: string; discriminator: number[]; accounts: { name: string; writable?: boolean; signer?: boolean }[] };
