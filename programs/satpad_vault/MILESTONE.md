@@ -82,10 +82,11 @@
 ## Build hashes (local, deterministic on this machine; Docker-reproducible hash pending D13)
 | Build | sha256 | Notes |
 | --- | --- | --- |
-| `scripts/build-vault.sh` (SBPF **v2**, 499,440 bytes) | `ef615eb5e6337efc4c99754c0a3626b82191cc79eadc7a5b458765955ea67c50` | passes 66 LiteSVM tests and the M2 DoD on Agave 4.3 |
+| `scripts/build-vault.sh` (SBPF **v2**, platform-tools **v1.57**, pinned D15) | `41ad639cf8ec5f17b0de1818deb469a948fda1bca97885341aa8c7b37eaad9cd` (494808 bytes) | passes 66 LiteSVM tests and the M2 DoD on Agave 4.1.2 |
+| earlier v2 build with platform-tools v1.54 (499,440 bytes) | `ef615eb5e6337efc4c99754c0a3626b82191cc79eadc7a5b458765955ea67c50` | superseded by the v1.57 pin |
 | `SBPF_ARCH=v3 scripts/build-vault.sh` (Anchor default, 467,008 bytes) | `7dbf2f8da59aea471d8ae85a8ec93da872fa1fb034eaa1c2076aafd45658230e` | **do not deploy**: `settle` fails on LiteSVM and on the real validator (D11/V14) |
 
-## Definition-of-done evidence (local mainnet fork, Agave 4.3.0, v2 build, 2026-10-02)
+## Definition-of-done evidence (local mainnet fork, Agave 4.1.2, v2 build, 2026-10-02)
 `scripts/local-fork.sh --detach && pnpm fork:m2`
 | Step | Signature / value |
 | --- | --- |

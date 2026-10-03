@@ -1098,6 +1098,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sbpf_repro"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

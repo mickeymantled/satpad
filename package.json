@@ -21,7 +21,8 @@
     "vault:set-pause": "tsx scripts/vault-set-pause.ts",
     "vault:recover": "tsx scripts/vault-recover.ts",
     "vault:set-lp": "tsx scripts/vault-set-lp.ts",
-    "fork:m2": "tsx scripts/fork-m2-settle.ts"
+    "fork:m2": "tsx scripts/fork-m2-settle.ts",
+    "repro:sbpf": "tsx scripts/repro-sbpf.ts"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"
@@ -38,6 +39,7 @@
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.18.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@coral-xyz/anchor": "^0.32.1"
   }
 }

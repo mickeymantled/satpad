@@ -1,4 +1,6 @@
 [toolchain]
+# Pinned (DECISIONS D15): Anchor 1.2.0 → cargo-build-sbf 4.1.0, platform-tools v1.57, rustc 1.89. Deployable arch is
+# SBPF v2 via scripts/build-vault.sh; `anchor build` alone emits v3, which is broken for this program (VERIFIED V14).
 anchor_version = "1.2.0"
 
 [features]
@@ -7,6 +9,7 @@ skip-lint = false
 
 [programs.localnet]
 satpad_vault = "52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93"
+sbpf_repro = "7JLG4yR2ohNn21SSXf7eiPCnWfqiMtMPoUaDQuTDphuW"   # VERIFIED V14 repro only; never deployed
 
 [provider]
 cluster = "localnet"

@@ -13,7 +13,7 @@ idl-ref/                 pump.fun / PumpSwap IDLs pinned from the SDKs on 2026-1
 ```
 
 ## Prereqs
-Node 22, pnpm 11, Solana CLI 4.3 (`$HOME/.local/share/solana/install/active_release/bin`), Rust 1.89 + Anchor CLI 1.2 (`rustup`, `avm`).
+Node 22, pnpm 11, Solana CLI 4.1.2 (`$HOME/.local/share/solana/install/active_release/bin`), Rust 1.89 + Anchor CLI 1.2 (`rustup`, `avm`).
 
 ## Quick start
 ```bash

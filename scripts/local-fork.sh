@@ -34,8 +34,13 @@ VAULT_ID="52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93"
 UPGRADE_AUTHORITY="${VAULT_UPGRADE_AUTHORITY:-U3CGV1FvYBnHDf9CNmEwEMW97CXE1BWo1pK7QqvNKav}"   # keys/upgrade-authority-dev.json
 [[ $DRY -eq 1 || -f "$VAULT_SO" ]] || { echo "missing $VAULT_SO — run scripts/build-vault.sh" >&2; exit 1; }
 
+# VERIFIED V14 repro program, loaded only when built (never deployed anywhere real).
+REPRO=()
+[[ -f target/deploy/sbpf_repro.so ]] && REPRO=(--upgradeable-program 7JLG4yR2ohNn21SSXf7eiPCnWfqiMtMPoUaDQuTDphuW target/deploy/sbpf_repro.so "$UPGRADE_AUTHORITY")
+
 CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port 8899
   --upgradeable-program "$VAULT_ID" "$VAULT_SO" "$UPGRADE_AUTHORITY"  # satpad_vault (this repo)
+  "${REPRO[@]}"
   # --- programs (program + programdata) ---
   --clone-upgradeable-program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P  # pump.fun
   --clone-upgradeable-program pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA  # PumpSwap (not read by create/buy; cloned for later milestones)
