@@ -5,7 +5,7 @@
 //     ledger row with that signature — nothing settled outside the keeper's books, nothing double-counted.
 // Also reports failed rows and per-coin lag (seconds between a coin's last trade and its settle). Exit 1 on any drift.
 // Usage: DATABASE_URL=... pnpm fork:check [--since-slot N] [--json out.json]
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { inArray } from "drizzle-orm";
 import { connect, ledger } from "@satpad/db";
@@ -44,11 +44,16 @@ async function chainEvents(conn: Connection, sinceSlot: number): Promise<ChainEv
 
 async function main() {
   const conn = new Connection(RPC, "confirmed");
-  const sinceSlot = Number(arg("since-slot") ?? 0);
+  // solana-test-validator retains only a short window of blocks; anything older is unverifiable, not drift.
+  const firstAvailable = await conn.getFirstAvailableBlock();
+  const requested = Number(arg("since-slot") ?? 0);
+  const sinceSlot = Math.max(requested, firstAvailable);
   const { db, close } = connect();
   const problems: string[] = [];
   try {
-    const rows = await db.select().from(ledger).where(inArray(ledger.type, ["settle", "pay_payee", "collect_creator_fee"]));
+    const allRows = await db.select().from(ledger).where(inArray(ledger.type, ["settle", "pay_payee", "collect_creator_fee"]));
+    const purged = allRows.filter((r) => r.slot !== null && Number(r.slot) < sinceSlot);
+    const rows = allRows.filter((r) => r.slot === null || Number(r.slot) >= sinceSlot);
     const events = await chainEvents(conn, sinceSlot);
     const bySig = new Map(events.map((e) => [e.signature, e]));
     const typeOf = { Settled: "settle", PayeePaid: "pay_payee" } as const;
@@ -83,16 +88,22 @@ async function main() {
       if (lastTrade) lagByMint[e.mint] = Math.max(lagByMint[e.mint] ?? 0, e.blockTime - lastTrade);
     }
     const lags = Object.values(lagByMint);
+    // Rolling sidecar (scripts/fork-rolling-check.sh) accumulates verified windows while history is still retained.
+    let rolling: Record<string, unknown> | null = null;
+    try { rolling = JSON.parse(readFileSync(".fork-ledger/soak-rolling.json", "utf8")); } catch { /* none */ }
     const summary = {
-      rpc: RPC, sinceSlot, ledgerRows: rows.length, chainEvents: events.length, settles: settled.length, payouts: events.length - settled.length,
-      failedRows: rows.filter((r) => r.status === "failed").length, maxLagS: lags.length ? Math.max(...lags) : null, avgLagS: lags.length ? Math.round(lags.reduce((a, b) => a + b, 0) / lags.length) : null,
-      problems,
+      rpc: RPC, requestedSinceSlot: requested, firstAvailableBlock: firstAvailable, sinceSlot,
+      ledgerRowsTotal: allRows.length, ledgerRowsChecked: rows.length, ledgerRowsOlderThanRetainedHistory: purged.length,
+      chainEvents: events.length, settles: settled.length, payouts: events.length - settled.length,
+      failedRows: allRows.filter((r) => r.status === "failed").length, maxLagS: lags.length ? Math.max(...lags) : null, avgLagS: lags.length ? Math.round(lags.reduce((a, b) => a + b, 0) / lags.length) : null,
+      rolling, problems,
     };
     console.log(JSON.stringify(summary, null, 2));
     const out = arg("json");
     if (out) writeFileSync(out, JSON.stringify(summary, null, 2));
-    if (problems.length) { console.error(`DRIFT: ${problems.length} problem(s)`); process.exit(1); }
-    console.log("ledger matches chain");
+    const rollingProblems = Number((rolling as { problems?: number } | null)?.problems ?? 0);
+    if (problems.length || rollingProblems) { console.error(`DRIFT: ${problems.length} problem(s) in this window, ${rollingProblems} accumulated`); process.exit(1); }
+    console.log("ledger matches chain" + (purged.length ? ` (${purged.length} rows predate retained history; see rolling sidecar)` : ""));
   } finally {
     await close();
   }

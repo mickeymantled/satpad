@@ -28,7 +28,9 @@
     "fork:seed": "tsx scripts/fork-seed-coins.ts",
     "fork:trade": "tsx scripts/fork-trader.ts",
     "keeper": "pnpm --filter @satpad/keeper start",
-    "fork:check": "tsx scripts/fork-keeper-check.ts"
+    "fork:check": "tsx scripts/fork-keeper-check.ts",
+    "fixtures:capture": "tsx scripts/capture-fixtures.ts",
+    "fork:check:rolling": "scripts/fork-rolling-check.sh"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*",
