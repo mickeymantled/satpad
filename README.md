@@ -5,7 +5,8 @@ Memecoin launchpad on Solana. Every coin is a pump.fun coin quoted in BTC (Wormh
 ## Layout
 ```
 programs/satpad_vault/   Anchor program (milestone 2)
-packages/sdk/            @satpad/sdk — PDAs, builders, pump.fun v2 wrappers
+packages/sdk/            @satpad/sdk — PDAs, builders, pump.fun v2 wrappers, vault client
+packages/db/             @satpad/db — Drizzle schema + migrations (Postgres 16): coins, ledger, keeper_health
 keeper/  indexer/  api/  web/   services (milestones 3–5)
 scripts/                 local fork, admin ops (every admin action is a script with --dry-run)
 tests/                   anchor bankrun + integration (milestone 2+)
@@ -22,4 +23,6 @@ pnpm fork -- --detach      # local mainnet fork with pump.fun + wBTC quote
 pnpm fork:smoke            # create_v2 + buy_v2 quoted in wBTC
 pnpm test && pnpm typecheck && pnpm lint
 pnpm test:vault            # anchor build + LiteSVM program tests
+docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine
+pnpm db:migrate            # keeper/indexer schema
 ```

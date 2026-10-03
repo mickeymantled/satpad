@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 3 — Keeper, claim and settle loop (M2 approved by human 2026-10-02; M3 code BLOCKED on the V14 investigation, one session, then plan)
-**Last completed step:** Milestone 2 closed (provisionally, D13). Definition of done met on the local mainnet fork with the SBPF v2 build via `pnpm fork:m2`; evidence in `programs/satpad_vault/MILESTONE.md`. 66 program tests, 39 sdk tests, cargo tests, typecheck, lint green.
-**Next step:** M3 task 1 — `packages/db`. (Push blocked until the GitHub token has the `workflow` scope; upstream issue to be filed right after the push.)
+**Last completed step:** M3 task 1 — `packages/db` (Drizzle schema `coins`/`ledger`/`keeper_health`, migration, 4 Postgres-backed tests). Upstream issue filed: anza-xyz/platform-tools#129.
+**Next step:** M3 task 2 — keeper config/keys/RPC layer with `sendWithRetry` and ledger hooks. `.github/workflows/verify-build.yml` is written but uncommitted until the GitHub token has the `workflow` scope.
 **Blockers:** none for M3 code — V14 session done (D15): mainnet accepts SBPF v2; v3 bug isolated to the full `settle` validation frame; toolchain pinned (Anchor 1.2.0 / cargo-build-sbf 4.1.0 / platform-tools v1.57 / arch v2); CI `verify-build.yml` added; audit scope in `docs/AUDIT_SCOPE.md`. Upstream issue drafted, not filed.
 
 ## Toolchain (installed 2026-10-02)
@@ -40,6 +40,9 @@ See `programs/satpad_vault/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V
 - 24-hour soak on the fork needs trading: `scripts/fork-trader.ts` buys/sells randomly across the seeded coins so fees keep accruing. The soak runs as a background job on this machine; the DoD check compares `ledger` rows to `Settled`/`PayeePaid` events parsed from the fork's transaction history.
 
 **Tasks (one commit each, vitest with every task):**
+
+Done: task 1 — (this commit)
+
 1. `packages/db`: Drizzle schema for `ledger` and `coins` (registry subset), migrations, `pnpm db:migrate`; test against local Postgres (skips with a clear message if `DATABASE_URL` is unset).
 2. `keeper/src/config.ts` + `keys.ts`: env parsing (zod), keypair loading, never logs secrets; `keeper/src/rpc.ts`: connection, priority-fee provider interface (Helius impl + fixed fallback), `sendWithRetry` (simulate, bump fee on expiry, ≤ 5 attempts) with ledger before/after hooks; tests with a mocked Connection.
 3. `keeper/src/coins.ts`: `Coin` account discovery via `getProgramAccounts` + decode, cached per tick; test against LiteSVM-style fixtures (encoded accounts).

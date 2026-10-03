@@ -22,7 +22,9 @@
     "vault:recover": "tsx scripts/vault-recover.ts",
     "vault:set-lp": "tsx scripts/vault-set-lp.ts",
     "fork:m2": "tsx scripts/fork-m2-settle.ts",
-    "repro:sbpf": "tsx scripts/repro-sbpf.ts"
+    "repro:sbpf": "tsx scripts/repro-sbpf.ts",
+    "db:migrate": "pnpm --filter @satpad/db migrate",
+    "db:generate": "pnpm --filter @satpad/db generate"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*"
