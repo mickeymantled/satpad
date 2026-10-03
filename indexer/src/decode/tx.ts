@@ -6,6 +6,8 @@ import bs58 from "bs58";
 export interface TokenBalance { accountIndex: number; mint: string; owner: string | null; amount: bigint; decimals: number }
 /** `data` is base58 in every source (RPC bytes are re-encoded) so decoders see one encoding. */
 export interface NormalizedIx { programId: string; accounts: string[]; data: string }
+/** Inner (CPI) instruction with the index of its top-level parent. Anchor `emit_cpi!` events live here, not in logs. */
+export interface NormalizedInnerIx extends NormalizedIx { parentIndex: number }
 export interface NormalizedTx {
   signature: string;
   slot: bigint;
@@ -16,7 +18,12 @@ export interface NormalizedTx {
   preTokenBalances: TokenBalance[];
   postTokenBalances: TokenBalance[];
   instructions: NormalizedIx[];
+  innerInstructions: NormalizedInnerIx[];
 }
+
+type RawInner = { index: number; instructions: { programIdIndex: number; accounts: number[]; data: string }[] }[];
+const inner = (groups: RawInner | null | undefined, keys: string[]): NormalizedInnerIx[] =>
+  (groups ?? []).flatMap((g) => g.instructions.map((ix) => ({ parentIndex: g.index, programId: keys[ix.programIdIndex]!, accounts: ix.accounts.map((i) => keys[i]!), data: ix.data })));
 
 type RawTokenBalance = { accountIndex: number; mint: string; owner?: string | null; uiTokenAmount: { amount: string; decimals: number } };
 const tb = (b: RawTokenBalance): TokenBalance => ({ accountIndex: b.accountIndex, mint: b.mint, owner: b.owner ?? null, amount: BigInt(b.uiTokenAmount.amount), decimals: b.uiTokenAmount.decimals });
@@ -36,6 +43,7 @@ export function fromRpc(signature: string, tx: VersionedTransactionResponse): No
     preTokenBalances: (tx.meta?.preTokenBalances ?? []).map((b) => tb(b as RawTokenBalance)),
     postTokenBalances: (tx.meta?.postTokenBalances ?? []).map((b) => tb(b as RawTokenBalance)),
     instructions: msg.compiledInstructions.map((ix) => ({ programId: keys[ix.programIdIndex]!, accounts: ix.accountKeyIndexes.map((i) => keys[i]!), data: bs58.encode(ix.data) })),
+    innerInstructions: inner(tx.meta?.innerInstructions as RawInner | null | undefined, keys),
   };
 }
 
@@ -43,7 +51,7 @@ export function fromRpc(signature: string, tx: VersionedTransactionResponse): No
 export interface HeliusRawTx {
   slot: number; blockTime?: number | null;
   transaction: { signatures: string[]; message: { accountKeys: string[]; instructions: { programIdIndex: number; accounts: number[]; data: string }[] } };
-  meta: { err: unknown; logMessages?: string[]; preTokenBalances?: RawTokenBalance[]; postTokenBalances?: RawTokenBalance[]; loadedAddresses?: { writable?: string[]; readonly?: string[] } };
+  meta: { err: unknown; logMessages?: string[]; preTokenBalances?: RawTokenBalance[]; postTokenBalances?: RawTokenBalance[]; loadedAddresses?: { writable?: string[]; readonly?: string[] }; innerInstructions?: RawInner };
 }
 
 export function fromHeliusRaw(tx: HeliusRawTx): NormalizedTx {
@@ -58,6 +66,7 @@ export function fromHeliusRaw(tx: HeliusRawTx): NormalizedTx {
     preTokenBalances: (tx.meta.preTokenBalances ?? []).map(tb),
     postTokenBalances: (tx.meta.postTokenBalances ?? []).map(tb),
     instructions: tx.transaction.message.instructions.map((ix) => ({ programId: keys[ix.programIdIndex]!, accounts: ix.accounts.map((i) => keys[i]!), data: ix.data })),
+    innerInstructions: inner(tx.meta.innerInstructions, keys),
   };
 }
 
@@ -86,5 +95,6 @@ export function fromFixture(json: { signature: string } & Record<string, unknown
     preTokenBalances: (tx.meta.preTokenBalances ?? []).map(tb),
     postTokenBalances: (tx.meta.postTokenBalances ?? []).map(tb),
     instructions,
+    innerInstructions: inner(tx.meta.innerInstructions, keys),
   };
 }

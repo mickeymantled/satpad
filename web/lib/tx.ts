@@ -1,7 +1,7 @@
 // Client transaction pipeline (SPEC "Wallet and transactions"): every transaction is built from @satpad/sdk,
 // simulated, shown instruction by instruction, then signed. Priority fee from the API; retry on blockhash expiry
 // with a bumped fee (same bump curve as the keeper), max 5 attempts. No float money anywhere.
-import { AddressLookupTableAccount, ComputeBudgetProgram, Connection, PublicKey, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { AddressLookupTableAccount, ComputeBudgetProgram, Connection, PublicKey, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type Signer } from "@solana/web3.js";
 import { bump, MAYHEM_PROGRAM_ID, PUMP_AMM_PROGRAM_ID, PUMP_FEES_PROGRAM_ID, PUMP_PROGRAM_ID, SATPAD_VAULT_PROGRAM_ID } from "@satpad/sdk";
 import { env } from "./env";
 
@@ -45,7 +45,7 @@ export interface WalletLike { publicKey: PublicKey; signTransaction<T extends Tr
 export type Rpc = Pick<Connection, "getLatestBlockhash" | "simulateTransaction" | "sendRawTransaction" | "confirmTransaction">;
 
 export interface Preview { instructions: ReturnType<typeof describeInstruction>[]; unitsConsumed: number; priorityFeeMicroLamports: bigint; sizeBytes: number; logs: string[] }
-export interface SendOptions { computeUnitLimit?: number; maxAttempts?: number; tables?: AddressLookupTableAccount[]; onPreview?: (p: Preview) => Promise<boolean> | boolean; onStatus?: (s: string) => void; fetchFee?: () => Promise<bigint> }
+export interface SendOptions { computeUnitLimit?: number; maxAttempts?: number; tables?: AddressLookupTableAccount[]; /** Extra keypairs that must sign after the wallet (a launch's new mint keypair). */ extraSigners?: Signer[]; onPreview?: (p: Preview) => Promise<boolean> | boolean; onStatus?: (s: string) => void; fetchFee?: () => Promise<bigint> }
 
 export async function fetchPriorityFee(): Promise<bigint> {
   try { const r = await fetch(`${env.apiUrl}/fees/priority`); const j = (await r.json()) as { microLamportsPerCu: string }; return BigInt(j.microLamportsPerCu); } catch { return 1_000n; }
@@ -77,6 +77,7 @@ export async function sendWithWallet(rpc: Rpc, wallet: WalletLike, ixs: Transact
       }
       opts.onStatus?.("awaiting signature");
       const signed = await wallet.signTransaction(tx);
+      if (opts.extraSigners?.length) { if (signed instanceof VersionedTransaction) signed.sign(opts.extraSigners); else signed.partialSign(...opts.extraSigners); }
       opts.onStatus?.("sending");
       const signature = await rpc.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 0 });
       opts.onStatus?.("confirming");

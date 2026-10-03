@@ -55,3 +55,9 @@
 - Helius webhook source is implemented but only unit-tested (no Helius account on the fork); first live use is M10 staging.
 - PumpSwap (pool) trade decoding — M6 when a pool exists on the fork.
 - Tasks 2–8 (STATUS.md).
+
+## Addendum 2026-10-03 (M5 task 7)
+- `NormalizedTx.innerInstructions` (RPC, Helius raw and fixture normalizers) and `pumpEvents()`: pump.fun events are
+  read from `emit_cpi` self-CPI inner instructions first, then from logs, de-duplicated. Reason: a launch
+  (create_v2 + declare_coin + buy_v2 in one v0 transaction) overflows the runtime's log limit and ends with
+  "Log truncated", which lost the first buy's `TradeEvent`. Fixture `launch_v0.json` + decoder test.

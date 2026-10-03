@@ -2,7 +2,7 @@
 // Hook around sendWithWallet: owns the preview modal state and a status line. One in-flight tx at a time.
 import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import type { AddressLookupTableAccount, TransactionInstruction } from "@solana/web3.js";
+import type { AddressLookupTableAccount, Signer, TransactionInstruction } from "@solana/web3.js";
 import { TxError, sendWithWallet, type Preview, type WalletLike } from "./tx";
 
 export function useTx() {
@@ -14,13 +14,13 @@ export function useTx() {
   const [preview, setPreview] = useState<{ p: Preview; title: string; resolve: (ok: boolean) => void } | null>(null);
   const [signature, setSignature] = useState<string>("");
 
-  const send = useCallback(async (title: string, ixs: TransactionInstruction[], tables?: AddressLookupTableAccount[]) => {
+  const send = useCallback(async (title: string, ixs: TransactionInstruction[], tables?: AddressLookupTableAccount[], extraSigners?: Signer[]) => {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error("Connect a wallet first");
     const w: WalletLike = { publicKey: wallet.publicKey, signTransaction: wallet.signTransaction };
     setError(""); setLogs([]); setSignature(""); setStatus("building");
     try {
       const res = await sendWithWallet(connection, w, ixs, {
-        ...(tables && { tables }),
+        ...(tables && { tables }), ...(extraSigners && { extraSigners }),
         onStatus: setStatus,
         onPreview: (p) => new Promise<boolean>((resolve) => setPreview({ p, title, resolve: (ok) => { setPreview(null); resolve(ok); } })),
       });

@@ -57,5 +57,20 @@
   with a v0 transaction over 3 tables, refusal before signing, failed simulation). Live check 2026-10-03: the built
   transaction simulated on mainnet with an unsigned funded payer — 908 bytes, 3 tables, 177,421 CU, no error.
 
+- Task 7 (D18, D14): API `POST /metadata` (`api/src/metadata.ts`: validation per SPEC "Metadata" — name ≤ 32 bytes,
+  description gets "Launched on satpad", empty website → the coin's Satpad page; pump.fun IPFS multipart upload as the
+  primary backend with automatic fallback to Postgres rows served at `GET /m/:id.json` + `/m/:id.png`; backend and
+  `launchAlt` reported by `GET /config`), `coin_metadata` migration, `scripts/create-launch-alt.ts` (dry-run lists the
+  static accounts). Web `/launch`: `lib/launch.ts` (context from vault Config + pump globals + lookup table, first-buy
+  quote on a not-yet-created curve, `buildLaunchIxs` = create_v2 with creator = CoinFee → declare_coin → optional
+  first buy) and `LaunchForm` (image as data URL, payee Me/Wallet/Holders, SwapPanel when BTC is short, v0 tx over the
+  table with the mint keypair as extra signer via `sendWithWallet`, preview of all 6 instructions, redirect to the coin
+  page once indexed). Tests: 3 API (normalize, api backend round trip, pump upload + fallback), 2 web unit, e2e
+  `launch.spec.ts` — the M5 definition of done: a SOL-only burner swaps 0.3 SOL, launches "E2E …" with a 0.0001 BTC
+  first buy and Holders payee; the coin page shows the name, the badge and the first buy as a trade; `/` lists it.
+  Indexer fix found by this test: the launch transaction exceeds the runtime log limit ("Log truncated"), so pump
+  events are now decoded from the `emit_cpi` self-CPI inner instructions first (logs as fallback, de-duplicated);
+  `indexer/test/fixtures/launch_v0.json` captured from the e2e coin with a decoder test.
+
 ## Deferred
-- Tasks 7–8 (STATUS.md).
+- Task 8 (STATUS.md).

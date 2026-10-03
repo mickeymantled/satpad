@@ -5,11 +5,43 @@ import path from "node:path";
 import { PublicKey } from "@solana/web3.js";
 import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
 import BN from "bn.js";
+import bs58 from "bs58";
 import { PUMP_PROGRAM_ID, parseVaultEvents } from "@satpad/sdk";
 import type { NormalizedTx } from "./tx";
 
 const pumpIdl = JSON.parse(readFileSync(path.resolve(__dirname, "../../../idl-ref/pump.json"), "utf8")) as Idl;
-const pumpParser = new EventParser(PUMP_PROGRAM_ID, new BorshCoder(pumpIdl));
+const pumpCoder = new BorshCoder(pumpIdl);
+const pumpParser = new EventParser(PUMP_PROGRAM_ID, pumpCoder);
+/** Anchor `emit_cpi!`: a self-CPI whose data is this 8-byte discriminator + event discriminator + borsh event. */
+const EVENT_CPI_DISCRIMINATOR = Buffer.from([0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d]);
+
+/**
+ * pump.fun events from one transaction. Primary source: self-CPI inner instructions (`emit_cpi!`), which survive the
+ * runtime's log limit — a launch (create_v2 + declare_coin + buy_v2) overflows it and ends with "Log truncated".
+ * Logged events (`emit!`) are added only when not already seen, so an event emitted both ways counts once.
+ */
+export function pumpEvents(tx: NormalizedTx): { name: string; data: Record<string, unknown> }[] {
+  const out: { name: string; data: Record<string, unknown> }[] = [];
+  const seen = new Set<string>();
+  const keyOf = (name: string, data: Record<string, unknown>) => `${name}:${JSON.stringify(data, (_k, v: unknown) => (v instanceof BN ? v.toString() : v instanceof PublicKey ? v.toBase58() : v))}`;
+  const pump = PUMP_PROGRAM_ID.toBase58();
+  for (const ix of tx.innerInstructions) {
+    if (ix.programId !== pump) continue;
+    const bytes = Buffer.from(bs58.decode(ix.data));
+    if (bytes.length < 16 || !bytes.subarray(0, 8).equals(EVENT_CPI_DISCRIMINATOR)) continue;
+    const ev = pumpCoder.events.decode(bytes.subarray(8).toString("base64"));
+    if (!ev) continue;
+    const k = keyOf(ev.name, ev.data as Record<string, unknown>);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push({ name: ev.name, data: ev.data as Record<string, unknown> });
+  }
+  for (const e of pumpParser.parseLogs(tx.logMessages)) {
+    const k = keyOf(e.name, e.data as Record<string, unknown>);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push({ name: e.name, data: e.data as Record<string, unknown> });
+  }
+  return out;
+}
 
 const big = (v: unknown): bigint => (v instanceof BN ? BigInt(v.toString()) : typeof v === "bigint" ? v : BigInt(String(v)));
 const key = (v: unknown): string => (v as PublicKey).toBase58();
@@ -36,8 +68,8 @@ export function decodeTx(tx: NormalizedTx): Decoded {
   const out: Decoded = { trades: [], creates: [], completes: [], collects: [], settles: [], payouts: [], vaultOther: [], holders: [] };
   if (tx.failed) return out;
   let ixIndex = 0;
-  for (const e of pumpParser.parseLogs(tx.logMessages)) {
-    const d = e.data as Record<string, unknown>;
+  for (const e of pumpEvents(tx)) {
+    const d = e.data;
     switch (e.name) {
       case "TradeEvent": {
         const quoteMint = key(d["quote_mint"]);

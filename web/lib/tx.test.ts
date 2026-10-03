@@ -51,4 +51,13 @@ describe("sendWithWallet", () => {
     const price = (raw: Uint8Array) => Transaction.from(raw).instructions[1]!.data.readBigUInt64LE(1);
     expect([price(sent[0]!), price(sent[1]!)]).toEqual([1000n, 1500n]);
   });
+  it("extra signers (a launch's mint keypair) sign after the wallet", async () => {
+    const { r, sent } = rpc(["ok"]);
+    const mint = Keypair.generate();
+    const ixn = SystemProgram.createAccount({ fromPubkey: payer.publicKey, newAccountPubkey: mint.publicKey, lamports: 1, space: 0, programId: SystemProgram.programId });
+    await sendWithWallet(r, wallet, [ixn], { fetchFee: async () => 1n, extraSigners: [mint] });
+    const tx = Transaction.from(sent[0]!);
+    expect(tx.signatures.map((s) => s.publicKey.toBase58()).sort()).toEqual([payer.publicKey.toBase58(), mint.publicKey.toBase58()].sort());
+    expect(tx.verifySignatures()).toBe(true);
+  });
 });

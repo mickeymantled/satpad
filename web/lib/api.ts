@@ -21,6 +21,9 @@ export interface RewardsRun { runIndex: string; snapshotHash: string; snapshotUr
 export interface LedgerEntry { id: string; signature: string | null; type: string; mint: string | null; actor: string; amounts: Record<string, Amount>; status: string; error: string | null; attempts: number; slot: string | null; createdAt: string | null; confirmedAt: string | null }
 export interface Stats { coinsLaunched: number; btcIntoLiquidity: Amount; btcToBuyback: Amount; creatorFees: Amount; satpadBurned: Amount; btcPaidToHolders: Amount; btcTradedToday: Amount; tradesToday: number; btcUsd: { cents: string; publishTime: number; source: string } }
 export interface Page { limit: number; offset: number; total?: number }
+export interface Config { metadataBackend: "pump" | "api"; launchAlt: string | null; webUrl: string; devFaucet: boolean; swap: "jupiter" | "dev-faucet" | "none"; cluster: string }
+export interface MetadataInput { name: string; symbol: string; description?: string; image: string; twitter?: string; telegram?: string; website?: string; mint?: string }
+export interface MetadataResult { uri: string; backend: "pump" | "api"; id?: string; fallbackReason?: string }
 
 export class ApiError extends Error { constructor(readonly status: number, msg: string) { super(msg); } }
 
@@ -40,4 +43,7 @@ export const api = {
   rewards: (mint: string, o: { limit?: number; offset?: number } = {}, init?: RequestInit) => get<Page & { runs: RewardsRun[] }>(`/coins/${mint}/rewards${qs(o)}`, init),
   ledger: (o: { type?: string; limit?: number; offset?: number } = {}, init?: RequestInit) => get<Page & { entries: LedgerEntry[] }>(`/ledger${qs(o)}`, init),
   stats: (init?: RequestInit) => get<Stats>("/stats", init),
+  config: (init?: RequestInit) => get<Config>("/config", init),
+  /** D18: the API uploads to pump.fun's IPFS (primary) or stores the metadata itself (fallback / fork). */
+  uploadMetadata: (m: MetadataInput) => get<MetadataResult>("/metadata", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(m) }),
 };

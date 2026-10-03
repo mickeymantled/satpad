@@ -6,7 +6,8 @@ test("home renders hero, stats, ticker and the fork's coins; filters and sorts c
   await expect(page.getByTestId("stats-bar")).toContainText("Coins launched");
   await expect(page.getByTestId("live-ticker")).toBeVisible();
   const cards = page.getByTestId("coin-card");
-  await expect(cards).toHaveCount(10);
+  const total = await cards.count();
+  expect(total).toBeGreaterThanOrEqual(10); // the seed makes 10; e2e launches add more
   await expect(cards.first()).toContainText("BTC");
   await expect(cards.first()).toContainText("sats");
   // stage filter: Dust (all 10 soak coins are below 10 buys? no — many are mining); counts must be ≤ 10 and consistent
@@ -19,10 +20,10 @@ test("home renders hero, stats, ticker and the fork's coins; filters and sorts c
   await expect(page.getByTestId("coin-card").first()).toContainText("pays holders");
   await page.getByTestId("coin-filters").getByRole("link", { name: "All" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId("coin-card")).toHaveCount(10);
+  await expect(page.getByTestId("coin-card")).toHaveCount(total);
   await page.getByLabel("Sort").selectOption("newest");
   await expect(page).toHaveURL(/sort=newest/);
-  await expect(page.getByTestId("coin-card")).toHaveCount(10);
+  await expect(page.getByTestId("coin-card")).toHaveCount(total);
   // ticker connects to WS /live and shows a trade from the running soak trader within a few seconds
   await expect(page.getByTestId("live-ticker")).toHaveAttribute("data-connected", "true", { timeout: 15_000 });
   await expect(page.getByTestId("live-ticker")).toContainText(/▲|▼/, { timeout: 20_000 });

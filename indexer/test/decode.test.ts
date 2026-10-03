@@ -26,6 +26,17 @@ describe("decodeTx on recorded fork transactions", () => {
     expect(d.settles).toHaveLength(0);
   });
 
+  it("launch_v0 (create_v2 + declare_coin + first buy in one v0 tx over the launch lookup table) → one create, one Declared, one buy", () => {
+    const tx = fixture("launch_v0");
+    const d = decodeTx(tx);
+    expect(d.creates).toHaveLength(1);
+    expect(d.creates[0]).toMatchObject({ mint: "5RJcqcQxxbszWfAsjhezgEeWN9c5GvkWeRbo9guDsYLe", symbol: "E2E", quoteMint: "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh" });
+    expect(d.vaultOther.map((e) => e.name)).toContain("Declared");
+    expect(d.trades).toHaveLength(1);
+    expect(d.trades[0]).toMatchObject({ mint: "5RJcqcQxxbszWfAsjhezgEeWN9c5GvkWeRbo9guDsYLe", side: "buy", tokenAmount: 2066557947085n, quoteMint: "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh" });
+    expect(d.trades[0]!.btcAmount).toBeGreaterThan(0n);
+    expect(d.holders.some((h) => h.mint === "5RJcqcQxxbszWfAsjhezgEeWN9c5GvkWeRbo9guDsYLe" && h.balance === 2066557947085n)).toBe(true);
+  });
   it("sell_v2 → one curve sell", () => {
     const d = decodeTx(fixture("sell_v2"));
     expect(d.trades).toHaveLength(1);
@@ -80,7 +91,7 @@ describe("fromHeliusRaw (V8 shape) is equivalent to the RPC shape", () => {
 
 describe("holderUpdates", () => {
   it("sums multiple token accounts per owner and zeroes closed accounts", () => {
-    const tx: NormalizedTx = { signature: "s", slot: 1n, blockTime: null, failed: false, accountKeys: [], logMessages: [], instructions: [],
+    const tx: NormalizedTx = { signature: "s", slot: 1n, blockTime: null, failed: false, accountKeys: [], logMessages: [], instructions: [], innerInstructions: [],
       preTokenBalances: [{ accountIndex: 1, mint: "M", owner: "A", amount: 5n, decimals: 6 }, { accountIndex: 3, mint: "M", owner: "B", amount: 9n, decimals: 6 }],
       postTokenBalances: [{ accountIndex: 1, mint: "M", owner: "A", amount: 2n, decimals: 6 }, { accountIndex: 2, mint: "M", owner: "A", amount: 4n, decimals: 6 }] };
     const h = holderUpdates(tx).sort((a, b) => a.wallet.localeCompare(b.wallet));
