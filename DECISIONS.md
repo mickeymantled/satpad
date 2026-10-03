@@ -86,3 +86,15 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D16 — 2026-10-03 — M4 — HTTP/WebSocket framework for the API: Fastify + @fastify/websocket + @fastify/rate-limit
 **Decision:** SPEC names "REST + WebSocket" and rate limiting without a library; Node 22 has no WebSocket server. Fastify with its official websocket and rate-limit plugins is the only new runtime dependency family for `api/`.
 **Status:** approved by human 2026-10-03.
+
+## D17 — 2026-10-03 — M5 — SOL→BTC auto-swap: Jupiter in production, dev-only faucet swap on the fork
+**Decision:** Jupiter v6 quote → swap transaction → client-side simulation → sign in production (V10). On the fork, where Jupiter cannot execute, a dev-only faucet swap (SOL → wBTC at a fixed rate via the fork's patched mint authority) behind `NEXT_PUBLIC_DEV_SWAP=1`. **Human requirement:** the faucet module must be tree-shaken out of production builds, not merely runtime-gated; a build check greps the production bundle for the dev-swap module name and fails if present.
+**Status:** approved by human 2026-10-03.
+
+## D18 — 2026-10-03 — M5 — Coin metadata: pump.fun IPFS upload primary (if V16 confirms), Postgres `POST /metadata` fallback
+**Decision (human):** run V16 first. If pump.fun's IPFS upload endpoint accepts third-party coins, use it as primary so the metadata URI is what explorers and pump.fun expect and survives Satpad downtime; keep the API's Postgres-backed `POST /metadata` as fallback and as the fork path. Which backend is active is recorded in runtime config (API `GET /config`, env `METADATA_BACKEND=pump|api`), not hardcoded. (Interpretation: "Config" = runtime config served by the API, not the on-chain `Config` account, which has no such field.)
+**Status:** approved by human 2026-10-03; backend choice pending V16.
+
+## D19 — 2026-10-03 — M5 — Web dependencies approved
+`next@15`, `react@19`, `@solana/wallet-adapter-{base,react,react-ui,wallets}`, `tailwindcss`, `lightweight-charts` (human: a hand-rolled chart is not worth maintaining), `@playwright/test` for e2e.
+**Status:** approved by human 2026-10-03.
