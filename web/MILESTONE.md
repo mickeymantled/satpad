@@ -21,5 +21,13 @@
   accepts its ESM-syntax TypeScript. e2e `home.spec.ts` against the live soak fork: 10 coins, filters/sorts, ticker
   connects and shows a live trade.
 
+- Task 4: `components/Providers.tsx` (ConnectionProvider + WalletProvider via Wallet Standard; burner adapter only
+  when `NEXT_PUBLIC_DEV_SWAP=1`), `WalletButton` in the header. `lib/tx.ts` `sendWithWallet`: priority fee from the
+  API's new `GET /fees/priority` (the keeper's `LiveFeeProvider` moved into `@satpad/sdk` so keeper, API and web share
+  one implementation), build legacy or v0 (+ lookup tables), simulate once, `onPreview` with named instructions / CU /
+  fee / size (user can cancel before any wallet prompt), sign, send `skipPreflight`, confirm by blockhash, retry on
+  expiry with the keeper's bump curve, ≤ 5 attempts. Unit tests (4) with a fake wallet and scripted RPC; e2e: burner
+  wallet connects from the header.
+
 ## Deferred
 - Tasks 2–8 (STATUS.md).

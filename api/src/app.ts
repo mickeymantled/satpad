@@ -1,7 +1,7 @@
 // Fastify app (DECISIONS D16). Read-only over the indexer tables; every amount is {base, ui[, usd]}; rate limited.
 import Fastify, { type FastifyInstance } from "fastify";
 import rateLimit from "@fastify/rate-limit";
-import { configPda, decodeConfig } from "@satpad/sdk";
+import { LiveFeeProvider, configPda, decodeConfig } from "@satpad/sdk";
 import { Connection } from "@solana/web3.js";
 import type { Db } from "@satpad/db";
 import { btc, iso, tokens } from "./format";
@@ -66,6 +66,19 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return { limit, offset, entries: rows.map((r) => ({ id: r.id.toString(), signature: r.signature, type: r.type, mint: r.mint, actor: r.actor, amounts: Object.fromEntries(Object.entries(r.amounts).map(([k, v]) => [k, btc(v)])), status: r.status, error: r.error, attempts: r.attempts, slot: r.slot?.toString() ?? null, createdAt: iso(r.createdAt), confirmedAt: iso(r.confirmedAt) })) };
   });
 
+  /** Priority fee for user transactions (micro-lamports per CU): Helius when the API's RPC is Helius, else recent fees, else min. */
+  const feeMin = 1_000n, feeMax = 2_000_000n;
+  app.get("/fees/priority", async () => {
+    if (!deps.rpc) return { microLamportsPerCu: feeMin.toString(), source: "default", min: feeMin.toString(), max: feeMax.toString() };
+    const provider = new LiveFeeProvider(deps.rpc as never, { min: feeMin, max: feeMax });
+    const { Transaction, SystemProgram, Keypair } = await import("@solana/web3.js");
+    const k = Keypair.generate().publicKey;
+    const probe = new Transaction().add(SystemProgram.transfer({ fromPubkey: k, toPubkey: k, lamports: 0 }));
+    probe.feePayer = k; probe.recentBlockhash = k.toBase58();
+    const fee = await provider.estimate(probe, 1);
+    return { microLamportsPerCu: fee.toString(), source: "live", min: feeMin.toString(), max: feeMax.toString() };
+  });
+
   app.get("/stats", async () => {
     const [s, price] = await Promise.all([stats(deps.db), deps.prices.btcUsd()]);
     const u = price.usdCents;
@@ -78,7 +91,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const m = new PublicKey(mint);
     return { coinFee: coinFeePda(m)[0].toBase58(), coinFeeAta: coinFeeAta(m).toBase58(), payeePot: payeePotPda(m)[0].toBase58(), rewardsPot: rewardsPotPda(m)[0].toBase58(), lpPot: lpPotPda()[0].toBase58(), config: configPda()[0].toBase58() };
   }
-  void decodeConfig; void deps.rpc;
+  void decodeConfig;
   return app;
 }
 

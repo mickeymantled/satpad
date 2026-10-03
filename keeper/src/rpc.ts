@@ -1,7 +1,7 @@
 // Transaction sending with the SPEC rules: simulate first, priority fee from the provider, retry with a bumped fee on
 // blockhash expiry up to maxAttempts (≤ 5), and a ledger row written before send and after confirmation.
 import { ComputeBudgetProgram, Connection, Keypair, Transaction, TransactionInstruction, type SendOptions } from "@solana/web3.js";
-import type { PriorityFeeProvider } from "./fees";
+import type { PriorityFeeProvider } from "@satpad/sdk";
 import type { LedgerEntry, LedgerStore } from "./ledger";
 import type { Logger } from "./log";
 

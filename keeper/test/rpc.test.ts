@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
-import { FixedFeeProvider, bump } from "../src/fees";
+import { FixedFeeProvider, bump } from "@satpad/sdk";
 import { MemoryLedger } from "../src/ledger";
 import { Sender, type Rpc } from "../src/rpc";
 import { createLogger } from "../src/log";

@@ -7,7 +7,7 @@ import { TelegramAlerter, noopAlerter } from "./alerts";
 import { RpcChainReader } from "./chain";
 import { discoverCoins, upsertCoins } from "./coins";
 import { describeConfig, loadConfig } from "./config";
-import { FixedFeeProvider, LiveFeeProvider } from "./fees";
+import { FixedFeeProvider, LiveFeeProvider } from "@satpad/sdk";
 import { startHealthServer } from "./health";
 import { loadKeypair } from "./keys";
 import { PgLedger } from "./ledger";

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WalletButton } from "./WalletButton";
 
 export function Header() {
   return (
@@ -11,7 +12,7 @@ export function Header() {
           <Link href="/ledger">Ledger</Link>
           <Link href="/docs">Docs</Link>
         </nav>
-        <div className="ml-auto" id="wallet-slot" />
+        <div className="ml-auto"><WalletButton /></div>
       </div>
     </header>
   );

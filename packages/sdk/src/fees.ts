@@ -1,5 +1,5 @@
-// Priority-fee providers (SPEC "Keeper service → Rules": Helius getPriorityFeeEstimate; retry with bumped fee).
-// Shapes from VERIFIED V15. Fees are micro-lamports per compute unit, bigint. The keeper never hardcodes a mainnet fee.
+// Priority-fee providers shared by the keeper, the API (`GET /fees/priority`) and so the web app (SPEC: Helius
+// getPriorityFeeEstimate; retry with bumped fee). Shapes from VERIFIED V15. Micro-lamports per compute unit, bigint.
 import type { Connection, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 
