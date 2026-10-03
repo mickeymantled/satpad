@@ -1,8 +1,8 @@
 # Status
 
 **Current milestone:** 1 — Repo and SDK
-**Last completed step:** Task 1 — workspace scaffold (pnpm workspaces, strict TS base, vitest, eslint, .env.example, README, package skeletons). `pnpm test && pnpm typecheck && pnpm lint` green.
-**Next step:** Task 2 — `packages/sdk/src/quoteMints.ts` (D2/D3 approved).
+**Last completed step:** Task 2 — `packages/sdk/src/quoteMints.ts`: pinned wBTC mint, 8 decimals, fee bps constants, pump program ids and singleton PDAs; 4 tests cross-check against `@pump-fun/pump-sdk` exports.
+**Next step:** Task 3 — satpad_vault PDA derivations.
 **Blockers:** none.
 
 ## Milestone 1 definition of done (per DECISIONS D1)
@@ -27,4 +27,5 @@ Solana/Agave CLI 4.3.0 at `$HOME/.local/share/solana/install/active_release/bin`
 - VERIFIED V1–V4, V12 + IDLs — `cb9ba49`
 - Local fork + smoke test + DECISIONS D1–D6 + V13 — `ca974bf`
 - D2/D3/D5 approvals, SPEC fee table — `4a94ee2`
-- Task 1: workspace scaffold — (this commit)
+- Task 1: workspace scaffold — `8e8c361`
+- Task 2: quoteMints.ts — (this commit)
