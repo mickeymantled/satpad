@@ -86,6 +86,8 @@
 | earlier v2 build with platform-tools v1.54 (499,440 bytes) | `ef615eb5e6337efc4c99754c0a3626b82191cc79eadc7a5b458765955ea67c50` | superseded by the v1.57 pin |
 | `SBPF_ARCH=v3 scripts/build-vault.sh` (Anchor default, 467,008 bytes) | `7dbf2f8da59aea471d8ae85a8ec93da872fa1fb034eaa1c2076aafd45658230e` | **do not deploy**: `settle` fails on LiteSVM and on the real validator (D11/V14) |
 
+<!-- ci-hash --> | CI Docker-reproducible (`solanafoundation/solana-verifiable-build:4.1.0`, SBPF v2, commit `d6542db`) | `e38ea840baf34acd8c3993ed96287c6edcfe748552d66417c121ebd67e9e494f` | executable hash `940a694e32259d164ba23ccde8d7f89d2567de8a60e3ed7debb887ddcfc3075b` — authoritative once it matches a local build |
+
 ## Definition-of-done evidence (local mainnet fork, Agave 4.1.2, v2 build, 2026-10-02)
 `scripts/local-fork.sh --detach && pnpm fork:m2`
 | Step | Signature / value |
