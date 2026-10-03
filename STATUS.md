@@ -54,6 +54,36 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 
 **Needs human before task 1:** none (Postgres and Drizzle are named in SPEC). Telegram alerts need a bot token only when deployed.
 
+## Milestone 6 — Reserve (plan draft 2026-10-03, awaiting human go)
+
+**Definition of done (SPEC, per D1):** $SATPAD on the fork with a graduated PumpSwap pool; LP loop with burn and buyback loop running; LP mint supply is net zero after ten runs.
+
+**Order:** M3 close-out first (soak ends ~2026-10-04 09:51 UTC; the fork restart it needs is also needed here for the extra PumpSwap clones), then M6.
+
+**Verification before code (VERIFIED.md):**
+- V5 — graduation threshold for a BTC-quoted curve: derive from the fork's QuoteControl/Global (`initial_virtual_quote_reserves = 5,082,192` sats, real token reserves), then confirm by buying a fork coin out and observing `complete = true`.
+- V17 (new) — `migrate_v2` is callable by anyone: the IDL (`idl-ref/pump.json`) lists `user` as its only signer and `withdraw_authority` as a plain account; confirm on the fork by migrating the completed curve, record every account incl. the PumpSwap `amm_global_config`, pool PDAs, LP mint and which accounts `local-fork.sh` must additionally clone.
+- V18 (new) — PumpSwap account lists and math from `idl-ref/pump_amm_sdk1.20.0.json` and `@pump-fun/pump-swap-sdk@1.20.0` (npm): `buy`/`buy_exact_quote_in`/`sell`, `deposit` (LP minted for a two-sided deposit), `collect_coin_creator_fee` (graduated coins' creator fees to the same CoinFee PDA, SPEC "Graduation"), LP mint supply semantics, pool fee tiers. Also: does the $SATPAD/BTC pool's `deposit` minted-LP amount equal what the keeper must burn (SPEC "burns exactly the LP tokens that deposit minted").
+
+**Dependencies needing approval (CLAUDE.md):** `@pump-fun/pump-swap-sdk@1.20.0` in `packages/sdk` (the pinned IDL is already in `idl-ref/`). **Program change needing a human OK:** the vault's `Config` has `satpad_mint`, `satpad_pool`, `satpad_lp_mint` but no setter — add admin-only `set_satpad` (write-once, or until the pool is set) so SPEC "record the pool and LP mint addresses in Config" is possible after bootstrap; new verifiable build hash.
+
+**Design notes**
+- LP leg swap: direct PumpSwap `buy` on the $SATPAD/BTC pool (not Jupiter — V10 showed 3 lookup tables and 840–949 bytes for a Jupiter swap, which cannot share a transaction with `draw_lp` + `deposit` + `burn`; SPEC forbids splitting the draw). One transaction: `draw_lp` → `buy` (~half the drawn BTC → $SATPAD, slippage-capped) → `deposit` both sides → SPL `burn` of exactly the LP minted (read LP ATA delta in the same tx via a tiny vault-free check: burn amount = post-deposit LP balance, since the LP wallet never holds LP otherwise) → alert if LP mint supply after > before. Lookup table if needed (D14 pattern).
+- Buyback loop: swap the buyback wallet's wBTC balance → $SATPAD on the pool and burn (SPL burn of the bought amount), min-balance skip, ledger rows `buyback`.
+- Keeper hot keys: LP wallet + buyback wallet keypairs via env paths like the keeper key (fork keys in `scripts/fork-keys/seed.json` already exist for both).
+- Indexer: PumpSwap `BuyEvent`/`SellEvent` on registered pools (venue `pool`), `LpDrawn` + deposit/burn amounts into `lp_runs`, buyback rows, stats (`btcIntoLiquidity`, `satpadBurned`); stage Block from `CompletePumpAmmMigrationEvent` (decoder exists).
+- Web: coin page trades through PumpSwap after graduation (SPEC "Trading"), pool-based chart; `/docs` addresses are M9.
+
+**Tasks (one commit each, tests with every task):**
+1. Fork graduation: `scripts/fork-graduate.ts` (buy a seeded coin out with minted wBTC, call `migrate_v2`, print pool + LP mint; `--dry-run`), extra `--clone`s in `local-fork.sh` (V17), indexer e2e: stage flips to Block, `pool` recorded. Records V5/V17.
+2. SDK: PumpSwap wrappers (`pool`/`lp` PDAs, `buildAmmBuy`, `buildAmmSell`, `buildAmmDeposit`, `buildCollectCoinCreatorFee`, quote math from the swap SDK) + fixtures from the fork (V18). Dep approval.
+3. Program: `set_satpad` + tests (bankrun/LiteSVM), audit-scope note, verifiable build (CI records the hash).
+4. `scripts/bootstrap-satpad.ts` (`--dry-run`): launch $SATPAD through the normal flow with `treasury_only`, drive it through the curve, `migrate_v2`, `set_satpad`; run on the fork; `scripts/fork-keys/seed.json` gains the pool addresses.
+5. Keeper: AMM collect in the settle loop for graduated coins; buyback-and-burn loop (300 s) with ledger + alerts; scenario tests.
+6. Keeper: LP deposit loop (one transaction, lookup table if needed), LP-supply guard + Telegram alert, ledger rows; tests with a scripted chain.
+7. Indexer + API + web: pool trades, lp/buyback ledger types, stats; coin page trading on PumpSwap after graduation; `fork-api-check` covers pool coins.
+8. Close: `scripts/fork-lp-check.ts` runs the LP loop ten times on the fork (`set_lp` interval 300 s) and asserts LP mint supply net zero and reserves grown — the DoD; `keeper/MILESTONE.md` + `packages/sdk/MILESTONE.md` addenda.
+
 ## M3 close-out tasks (after the soak ends and the fork can restart — human queue 2026-10-03)
 1. Commit the soak summary the script writes into STATUS.md / keeper/MILESTONE.md; include the indexer's `rpc rate` footprint and the rolling sidecar totals; close M3.
 2. `scripts/local-fork.sh`: `--clone` the Pyth BTC/USD feed account `4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo` (+ receiver program `rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ` as upgradeable) so `PRICE_SOURCE=pyth` runs live on the fork (price frozen at clone time; staleness guard needs `PRICE_MAX_AGE_SECS` override on the fork).
