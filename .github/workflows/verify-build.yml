@@ -39,6 +39,7 @@ jobs:
       - name: Hash
         id: hash
         run: |
+          sudo chown -R "$(id -u):$(id -g)" target  # the verifiable-build container writes target/ as root
           HASH=$(solana-verify get-executable-hash target/deploy/satpad_vault.so)
           SHA=$(sha256sum target/deploy/satpad_vault.so | cut -d' ' -f1)
           EFLAGS=$(python3 -c "import struct;d=open('target/deploy/satpad_vault.so','rb').read();print(struct.unpack('<I',d[48:52])[0])")
