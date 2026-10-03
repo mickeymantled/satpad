@@ -27,6 +27,12 @@
   Tests (7): full pipeline + ledger amounts, dust vs waiting fees, missing payee ATA, Holders/treasury-only, pauses,
   one failing coin, graduated AMM balance flagged.
 
+- Task 5: `src/scheduler.ts` (per-loop state, no overlapping ticks, alert exactly once at 3 consecutive failures,
+  `tick()` for `--once`), `src/health.ts` (`/healthz` JSON, 503 if a loop is stale > 3 intervals or failing ≥ 3),
+  `src/alerts.ts` (`TelegramAlerter`, `noopAlerter`), `src/main.ts` (env → Postgres ledger + live/fixed fees + settle
+  loop; `keeper_health` upsert per tick; `--once` exits non-zero on failure; SIGINT/SIGTERM), `Dockerfile`, `railway.toml`.
+  Tests (4): failure counting/alert/reset, start/reschedule/stop with injected timers, health staleness, Telegram POST.
+
 ## How to run
 ```bash
 docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine
