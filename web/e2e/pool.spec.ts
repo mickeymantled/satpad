@@ -7,11 +7,17 @@ const RPC = process.env["E2E_RPC_URL"] ?? "http://127.0.0.1:8899";
 const API = process.env["E2E_API_URL"] ?? "http://127.0.0.1:8083";
 
 test("buy and sell a graduated coin on its PumpSwap pool", async ({ page }) => {
-  const list = (await (await fetch(`${API}/coins?stage=block&limit=5`)).json()) as { coins: { mint: string; symbol: string | null; treasuryOnly: boolean }[] };
-  const coin = list.coins.find((c) => !c.treasuryOnly) ?? list.coins[0];
+  const consoleErrors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300)); });
+  page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message.slice(0, 300)}`));
+  const list = (await (await fetch(`${API}/coins?stage=block&limit=5`)).json()) as { coins: { mint: string; symbol: string | null }[] };
+  const details = await Promise.all(list.coins.map(async (c) => (await (await fetch(`${API}/coins/${c.mint}`)).json()) as { mint: string; treasuryOnly: boolean }));
+  const coin = details.find((c) => !c.treasuryOnly) ?? details[0];
   test.skip(!coin, "no graduated coin on this stack");
-  await page.goto(`/coin/${coin!.mint}`);
-  await expect(page.getByTestId("trade-panel")).toHaveAttribute("data-venue", "pool");
+  const nav = await page.goto(`/coin/${coin!.mint}`);
+  try {
+    await expect(page.getByTestId("trade-panel")).toHaveAttribute("data-venue", "pool", { timeout: 60_000 }); // first load compiles the route on a dev server
+  } catch (e) { throw new Error(`${(e as Error).message}\nnav: ${nav?.status()} ${page.url()}\nconsole: ${consoleErrors.join(" | ")}\nbody: ${(await page.locator("body").innerText()).slice(0, 300)}`); }
   await page.getByTestId("wallet-button").getByRole("button").click();
   await page.getByRole("button", { name: /Burner/ }).click();
   await expect.poll(async () => page.getByTestId("wallet-button").getAttribute("data-pubkey"), { timeout: 15_000 }).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);

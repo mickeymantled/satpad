@@ -29,7 +29,7 @@ export class ApiError extends Error { constructor(readonly status: number, msg: 
 
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${env.apiUrl}${path}`, { ...init, headers: { accept: "application/json", ...(init?.headers ?? {}) } });
-  if (!res.ok) throw new ApiError(res.status, `${path} → ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, `${path} → ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
   return res.json() as Promise<T>;
 }
 const qs = (o: Record<string, string | number | boolean | undefined>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== "") p.set(k, String(v)); const s = p.toString(); return s ? `?${s}` : ""; };

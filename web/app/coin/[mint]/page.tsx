@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
+import { env } from "@/lib/env";
 import { explorerAccount } from "@/lib/links";
 import { ago, short } from "@/lib/format";
 import { CoinTabs } from "@/components/CoinTabs";
@@ -13,7 +14,8 @@ export const dynamic = "force-dynamic";
 export default async function CoinPage({ params }: { params: Promise<{ mint: string }> }) {
   const { mint } = await params;
   const noStore = { cache: "no-store" as const };
-  const coin = await api.coin(mint, noStore).catch(() => null);
+  // Only a real 404 is "not found"; any other API failure (rate limit, outage) surfaces as an error instead of a silent 404.
+  const coin = await api.coin(mint, noStore).catch((e: unknown) => { if (e instanceof ApiError && e.status === 404) { console.warn("coin page: 404 from API", { mint, api: env.apiUrl, error: e.message }); return null; } console.error("coin page: API failure", { mint, api: env.apiUrl, error: String(e) }); throw e; });
   if (!coin) notFound();
   const [trades, holders] = await Promise.all([api.trades(mint, { limit: 100 }, noStore), api.holders(mint, { limit: 50 }, noStore)]);
   const links: [string, string][] = [["CoinFee (pump creator)", coin.accounts.coinFee], ["Fee ATA", coin.accounts.coinFeeAta], ["Payee pot", coin.accounts.payeePot], ["Rewards pot", coin.accounts.rewardsPot], ["Bonding curve", coin.bondingCurve], ...(coin.pool ? [["PumpSwap pool", coin.pool] as [string, string]] : [])];
