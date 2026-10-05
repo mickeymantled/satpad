@@ -6,7 +6,9 @@
 #   --detach   start in background (log: .fork-ledger/validator.log) and wait until RPC is healthy
 # Env: FORK_RPC_URL  source RPC for clones (default https://api.mainnet-beta.solana.com; publicnode 403s the test-validator clone requests)
 #      SOLANA_BIN    dir holding solana-test-validator (default $HOME/.local/share/solana/install/active_release/bin)
-# Idempotent: always `--reset`s the ledger in .fork-ledger/ledger (gitignored).
+#      RPC_PORT      validator RPC port (default 8899); LEDGER_DIR  ledger/log dir (default .fork-ledger) — set both to
+#                    run a second instance next to a soak (e.g. RPC_PORT=8999 LEDGER_DIR=.fork-ledger-m6)
+# Idempotent: always `--reset`s the ledger in $LEDGER_DIR/ledger (gitignored).
 #
 # wBTC (3NZ9JM..., Wormhole Portal, SPL Token, 8 dec) is NOT cloned verbatim: scripts/fork-prepare-mint.ts
 # fetches it (read-only), patches mint_authority to the local keypair scripts/fork-keys/wbtc-authority.json
@@ -24,7 +26,8 @@ for a in "$@"; do case "$a" in --dry-run) DRY=1;; --detach) DETACH=1;; *) echo "
 
 export PATH="${SOLANA_BIN:-$HOME/.local/share/solana/install/active_release/bin}:$PATH"
 URL="${FORK_RPC_URL:-https://api.mainnet-beta.solana.com}"
-DIR=".fork-ledger"
+DIR="${LEDGER_DIR:-.fork-ledger}"
+RPC_PORT="${RPC_PORT:-8899}"
 MINT_JSON="$DIR/wbtc-mint.json"
 
 # satpad_vault: loaded as an upgradeable program with the dev upgrade-authority key so set_lp can be exercised.
@@ -38,7 +41,7 @@ UPGRADE_AUTHORITY="${VAULT_UPGRADE_AUTHORITY:-U3CGV1FvYBnHDf9CNmEwEMW97CXE1BWo1p
 REPRO=()
 [[ -f target/deploy/sbpf_repro.so ]] && REPRO=(--upgradeable-program 7JLG4yR2ohNn21SSXf7eiPCnWfqiMtMPoUaDQuTDphuW target/deploy/sbpf_repro.so "$UPGRADE_AUTHORITY")
 
-CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port 8899
+CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port "$RPC_PORT"
   --upgradeable-program "$VAULT_ID" "$VAULT_SO" "$UPGRADE_AUTHORITY"  # satpad_vault (this repo)
   "${REPRO[@]}"
   # --- programs (program + programdata) ---
@@ -59,6 +62,9 @@ CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-por
   --clone Dxe22pvU3G24atApYGQY6EhgD1NNiTQSqNaP77chkd9H  # fee_recipient's wBTC ATA (associated_quote_fee_recipient)
   --clone 9M4giFFMxmFGXtc3feFzRai56WbBqehoSeRE5GK7gf7  # buyback_fee_recipient (SDK CURRENT_FEE_RECIPIENTS_FOR_BUYBACK[1]; smoke pins it)
   --clone 7yLvEgewyd3qfG7uvs4KV592uMFdwnNXTAazZ9hidW6A  # buyback recipient's wBTC ATA (associated_quote_buyback_fee_recipient)
+  # --- Pyth BTC/USD (VERIFIED V7; M3 close-out) so the API's PRICE_SOURCE=pyth reads a real feed; price frozen at clone time ---
+  --clone-upgradeable-program rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ  # pyth-solana-receiver (owner of the feed account)
+  --clone 4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo  # sponsored BTC/USD price update account, shard 0
 )
 
 if [[ $DRY -eq 1 ]]; then
@@ -73,7 +79,7 @@ if [[ $DETACH -eq 1 ]]; then
   nohup "${CMD[@]}" >"$DIR/validator.log" 2>&1 &
   echo $! >"$DIR/validator.pid"
   start=$(date +%s)
-  until solana --url http://127.0.0.1:8899 cluster-version >/dev/null 2>&1; do
+  until solana --url "http://127.0.0.1:$RPC_PORT" cluster-version >/dev/null 2>&1; do
     kill -0 "$(cat "$DIR/validator.pid")" 2>/dev/null || { tail -20 "$DIR/validator.log"; echo "validator died" >&2; exit 1; }
     sleep 1
   done

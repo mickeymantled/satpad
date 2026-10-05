@@ -2,7 +2,7 @@
 
 **Current milestone:** 3 — Keeper, claim and settle loop (M2 approved by human 2026-10-02; M3 code BLOCKED on the V14 investigation, one session, then plan)
 **Last completed step:** M3 task 7 — `scripts/fork-keeper-check.ts` reconciler (ledger→chain: every confirmed row has a matching `Settled`/`PayeePaid` event with equal mint+amounts, collects exist on chain; chain→ledger: every vault event has exactly one confirmed row; failed/stuck rows reported; per-coin trade→settle lag). Live fork: 24 rows ↔ 14 events, 0 problems, max lag 43 s; a forged row makes it exit 1. `.github/workflows/keeper-reconcile.yml` written (fork + Postgres service + seed/trade/keeper/check on every push) — uncommitted until the token has `workflow` scope. Earlier: task 6 — `scripts/lib/fork.ts` (shared fork helpers: funding, wBTC mint, launch table, v0 launch), `scripts/fork-seed-coins.ts` (vault init with distinct wallets + N coins via the real launch flow, payees Me/Wallet/Holders round-robin; writes `scripts/fork-keys/seed.json`), `scripts/fork-trader.ts` (random buys/sells). Verified on the fork: 10 coins, 84 trades/0 errors, then `keeper --once` → 10 collect + 10 settle + 4 pay_payee rows confirmed, Holders and ATA-less payees correctly skipped. Earlier: task 5 — `scheduler.ts` (serialised ticks, consecutive-failure count, alert once at 3, `--once`), `health.ts` (`/healthz`, 503 when stale/failing), `alerts.ts` (Telegram + no-op), `main.ts` wiring (Postgres ledger, live/fixed fees, keeper_health upsert, SIGTERM), `Dockerfile` + `railway.toml`; 4 tests (28 keeper tests). Earlier: task 4 — `keeper/src/loops/settle.ts` `settleTick`: per coin, collect (≥ dust) → settle (re-read balance; split amounts in the ledger; treasury-only path) → pay_payee only when the payee ATA exists; paused coin/vault skips; per-coin try/catch; graduated AMM vault flagged for M6; `src/chain.ts` `RpcChainReader`. 7 scenario tests (24 keeper tests). Earlier: task 3 — `keeper/src/coins.ts`: `discoverCoins` (getProgramAccounts on the `Coin` discriminator, SDK decode, garbage-tolerant) + `upsertCoins` (registry subset into `coins`, indexer-owned columns untouched); 2 tests (17 keeper tests). SDK `PayeeMode` narrowed to on-chain values. Earlier: task 2 — keeper `config.ts` (env, redacted describe), `keys.ts`, `log.ts` (JSON lines), `fees.ts` (provider interface, fixed + bump), `ledger.ts` (Postgres + memory stores), `rpc.ts` `Sender` (simulate → send → confirm, bumped-fee retry on expiry ≤ 5, ledger built→sent→confirmed/failed); 10 tests. `LiveFeeProvider` (Helius → `getRecentPrioritizationFees` p75 → min, clamped, bumped) per V15; 15 keeper tests.
-**Next step:** M5 is closed pending human review (DoD green: 7/7 Playwright on the live fork, see `web/MILESTONE.md`). Then present the M6 plan (graduation / PumpSwap pool, $SATPAD LP deepening — read SPEC's M6 section first) and wait for go. Open items carried: M3 close-out queue below (soak ends ~2026-10-04 09:51 UTC); D20 follow-up (maximal launch in one tx); `web-e2e.yml` green on its first full run (366acc0): fork + Postgres + API + indexer + Next + Playwright 7/7 on the runner, production bundle check ok.
+**Next step:** (1) M3 soak re-run: add Pyth clones + `RPC_PORT`/`LEDGER_DIR` to `scripts/local-fork.sh`, restart colima/Postgres, start `scripts/fork-soak.sh` detached for 24 h and leave it alone (kill nothing by `tsx src/main.ts`). (2) D20 condition: explicit split notice in the preview modal. (3) M6 task 1 on a second validator (:8999). M5 approved 2026-10-04.
 **Blockers:** none for M3 code — V14 session done (D15): mainnet accepts SBPF v2; v3 bug isolated to the full `settle` validation frame; toolchain pinned (Anchor 1.2.0 / cargo-build-sbf 4.1.0 / platform-tools v1.57 / arch v2); CI `verify-build.yml` added; audit scope in `docs/AUDIT_SCOPE.md`. Upstream issue drafted, not filed.
 
 ## Toolchain (installed 2026-10-02)
@@ -26,6 +26,20 @@ D9 constants/gates (approved) · D10 LiteSVM harness (in effect) · D11 SBPF v2 
 
 ### Deferred
 See `programs/satpad_vault/MILESTONE.md` "Deferred". Open VERIFIED items: V5–V11, V14 (partial).
+
+### M3 soak summary (written by scripts/fork-soak.sh)
+- Window: 2026-10-03T09:49:34Z → 2026-10-03T18:15:08Z (30334s of 86400s planned), 10 coins, trade every 3000 ms, keeper settle interval 60000 ms
+- Trades: 9200 (0 errors) · keeper ticks ok/failed: 0/0 · per-coin failures: 0
+- Settles: ? · payouts: ? · reconciler problems: ? (exit 1) · max per-coin trade→settle lag: ?s
+- Final /healthz: {}
+- **Definition of done: NOT MET** (ledger rows match chain: NO; unattended for 30334s)
+
+### M3 soak — result and analysis (2026-10-05)
+The script's summary above says NOT MET, and that is correct, for two reasons unrelated to the keeper's behaviour:
+1. **The keeper was killed by me at 2026-10-03T11:24:55Z**, 95 minutes into the soak: a `pkill -f "indexer/src/main.ts|tsx src/main.ts"` meant to restart the indexer also matched the keeper (`keeper/src/main.ts` runs as `tsx src/main.ts`). The keeper log ends with `shutting down SIGTERM`; the trader kept trading (9,200 trades, 0 errors) with nobody settling. Lesson recorded in CLAUDE-level notes: kill by pid/port, never by `tsx src/main.ts`.
+2. **The host session ended at ~2026-10-03T18:13Z** (validator, indexer, API, web, colima/Postgres all gone; machine not rebooted), which is why the window closed at 30,334 s and the final reconciler/health calls failed (`/healthz: {}`; the check scripts also hit a tsx loader error `r.register is not a function` — see below).
+What the soak did show while the keeper ran (rolling sidecar `.fork-ledger/soak-rolling.json`, 1,199 windows): **79 settles, 31 payouts, 0 reconciliation problems, max trade→settle lag 62 s**, 3 false positives cleared (rows seen in `sent` mid-confirmation; checker now treats `sent` rows < 90 s old as in-flight). Indexer ran alongside at ≤ 4 req/s.
+**Decision (loop rule 9, red → plan):** re-run the 24 h soak on a fresh fork with the Pyth clone (M3 close-out item 2 done first); M3 stays open until it is green. M6 development runs against a **second** validator instance (`RPC_PORT=8999`, own ledger dir, own database) so the soak is never touched.
 
 ## Milestone 3 — Keeper, claim and settle loop (human said "go" 2026-10-03, with two additions)
 
@@ -54,7 +68,7 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 
 **Needs human before task 1:** none (Postgres and Drizzle are named in SPEC). Telegram alerts need a bot token only when deployed.
 
-## Milestone 6 — Reserve (plan draft 2026-10-03, awaiting human go)
+## Milestone 6 — Reserve (human said "go" 2026-10-04; swap-sdk dep approved; set_satpad per D21)
 
 **Definition of done (SPEC, per D1):** $SATPAD on the fork with a graduated PumpSwap pool; LP loop with burn and buyback loop running; LP mint supply is net zero after ten runs.
 
@@ -126,7 +140,7 @@ DoD met: `pnpm fork:api-check` → 0 problems on the live soak fork (10 coins, 2
 
 Done: task 1 — `33d99e6` · task 2 — `621b048` · task 3 — `5838fc3` · task 4 — `78a9ba7` · task 5 — `51e9d8d` · task 6 — `b15ea2c` · task 7 — `c6dd3e9` · task 8 — (this commit)
 
-## Milestone 5 — Web app core — closed 2026-10-03 (pending review; human said "go" 2026-10-03; D17/D18/D19/D20)
+## Milestone 5 — Web app core — closed 2026-10-03 (approved by human 2026-10-04; human said "go" 2026-10-03; D17/D18/D19/D20)
 
 **Definition of done (SPEC, per D1):** a user with only SOL launches and trades on the fork from the UI.
 

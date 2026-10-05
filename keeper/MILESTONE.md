@@ -43,6 +43,13 @@
   of `ledger` against vault events, lag stats, exit 1 on drift. CI: `.github/workflows/keeper-reconcile.yml` boots the
   fork on an ubuntu runner with a Postgres service, seeds 3 coins, trades, runs the keeper twice, reconciles.
 
+### M3 soak summary (written by scripts/fork-soak.sh)
+- Window: 2026-10-03T09:49:34Z → 2026-10-03T18:15:08Z (30334s of 86400s planned), 10 coins, trade every 3000 ms, keeper settle interval 60000 ms
+- Trades: 9200 (0 errors) · keeper ticks ok/failed: 0/0 · per-coin failures: 0
+- Settles: ? · payouts: ? · reconciler problems: ? (exit 1) · max per-coin trade→settle lag: ?s
+- Final /healthz: {}
+- **Definition of done: NOT MET** (ledger rows match chain: NO; unattended for 30334s)
+
 ## How to run
 ```bash
 docker run -d --name satpad-postgres -e POSTGRES_USER=satpad -e POSTGRES_PASSWORD=satpad -e POSTGRES_DB=satpad -p 55433:5432 postgres:16-alpine
