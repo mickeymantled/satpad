@@ -11,7 +11,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { PUMP_SDK, bondingCurvePda } from "@pump-fun/pump-sdk";
 import { connect, coins, holders } from "@satpad/db";
-import { INITIAL_REAL_TOKEN_RESERVES, parseVaultEvents } from "@satpad/sdk";
+import { INITIAL_REAL_TOKEN_RESERVES, decodePool, parseVaultEvents } from "@satpad/sdk";
 import { eq } from "drizzle-orm";
 import { buildApp } from "../api/src/app";
 import { FixedPriceProvider } from "../api/src/prices";
@@ -39,15 +39,17 @@ async function main() {
       let ok = false;
       for (let i = 0; i < 6 && !ok; i++) {
         const sigs = await conn.getSignaturesForAddress(bondingCurvePda(new PublicKey(c.mint)), { limit: 1 }, "confirmed");
+        // M6: a graduated coin's newest activity is on its pool
+        const poolSigs = c.pool ? await conn.getSignaturesForAddress(new PublicKey(c.pool), { limit: 1 }, "confirmed") : [];
         const [row] = await db.select({ indexedSlot: coins.indexedSlot }).from(coins).where(eq(coins.mint, c.mint));
-        ok = (sigs[0]?.slot ?? 0) <= Number(row?.indexedSlot ?? 0n);
+        ok = Math.max(sigs[0]?.slot ?? 0, poolSigs[0]?.slot ?? 0) <= Number(row?.indexedSlot ?? 0n);
         if (!ok) await new Promise((r) => setTimeout(r, 5000));
       }
       if (ok) synced.add(c.mint); else { lagging++; problems.push(`${c.mint}: indexer never caught up with the curve within 30 s`); }
     }
     // re-read API and DB after the wait so comparisons see the same state
     const apiNow = await get<{ total: number; coins: ApiCoin[] }>("/coins?limit=100");
-    const dbNow = await db.select({ mint: coins.mint, vq: coins.virtualQuoteReserves, rt: coins.realTokenReserves }).from(coins);
+    const dbNow = await db.select({ mint: coins.mint, vq: coins.virtualQuoteReserves, rt: coins.realTokenReserves, pool: coins.pool, pb: coins.poolBaseReserves, pq: coins.poolQuoteReserves }).from(coins);
     let coinsChecked = 0;
     for (const c of registered) {
       if (!synced.has(c.mint)) continue;
@@ -63,6 +65,15 @@ async function main() {
       if (d.rt !== null && d.rt !== curve.realTokenReserves.toString()) problems.push(`${c.mint}: real_token_reserves db ${d.rt} vs chain ${curve.realTokenReserves}`);
       if (a.curveProgressBps !== chainProgress) problems.push(`${c.mint}: progress api ${a.curveProgressBps} vs chain ${chainProgress}`);
       if (curve.complete !== (a.stage === "block")) problems.push(`${c.mint}: stage ${a.stage} vs curve.complete=${curve.complete}`);
+      // M6: graduated coins — the pool reserves the indexer keeps must match the pool's token accounts on chain
+      if (d.pool) {
+        const poolInfo = await conn.getAccountInfo(new PublicKey(d.pool), "confirmed");
+        if (!poolInfo) { problems.push(`${c.mint}: pool ${d.pool} missing on chain`); continue; }
+        const pool = decodePool(poolInfo.data);
+        const [base, quote] = await Promise.all([conn.getTokenAccountBalance(pool.poolBaseTokenAccount, "confirmed"), conn.getTokenAccountBalance(pool.poolQuoteTokenAccount, "confirmed")]);
+        if (d.pb !== base.value.amount) problems.push(`${c.mint}: pool_base_reserves db ${d.pb} vs chain ${base.value.amount}`);
+        if (d.pq !== quote.value.amount) problems.push(`${c.mint}: pool_quote_reserves db ${d.pq} vs chain ${quote.value.amount}`);
+      }
     }
 
     // 2. ledger vs chain (retained window only)
@@ -75,10 +86,16 @@ async function main() {
       const tx = await conn.getTransaction(e.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
       if (!tx) { ledgerSkipped++; continue; }
       ledgerChecked++;
-      const ev = parseVaultEvents(tx.meta?.logMessages ?? []).find((x) => (e.type === "settle" && x.name === "Settled") || (e.type === "pay_payee" && x.name === "PayeePaid"));
-      if (!ev) { problems.push(`ledger ${e.signature}: no ${e.type} event on chain`); continue; }
-      const chainAmt = String(ev.data[e.type === "settle" ? "amount" : "amount"]);
-      const apiAmt = e.amounts[e.type === "settle" ? "fee" : "amount"]?.base;
+      if (tx.meta?.err) { problems.push(`ledger ${e.signature}: confirmed row but the transaction failed on chain`); continue; }
+      // M6 rows: lp_deposit carries the vault's LpDrawn (amount = drawn); buyback has no vault event (PumpSwap buy + burn) — the
+      // transaction existing without error is the check; collect rows are pump/PumpSwap instructions, also no vault event.
+      if (e.type === "buyback" || e.type === "collect_creator_fee") continue;
+      const want = e.type === "settle" ? "Settled" : e.type === "pay_payee" ? "PayeePaid" : e.type === "lp_deposit" ? "LpDrawn" : null;
+      if (!want) continue;
+      const ev = parseVaultEvents(tx.meta?.logMessages ?? []).find((x) => x.name === want);
+      if (!ev) { problems.push(`ledger ${e.signature}: no ${want} event on chain`); continue; }
+      const chainAmt = String(ev.data["amount"]);
+      const apiAmt = e.amounts[e.type === "settle" ? "fee" : e.type === "lp_deposit" ? "drawn" : "amount"]?.base;
       if (chainAmt !== apiAmt) problems.push(`ledger ${e.signature}: amount api ${apiAmt} vs chain ${chainAmt}`);
     }
 

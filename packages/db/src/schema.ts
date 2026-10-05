@@ -43,6 +43,9 @@ export const coins = pgTable("coins", {
   virtualQuoteReserves: numeric("virtual_quote_reserves", { precision: 30, scale: 0 }),
   virtualTokenReserves: numeric("virtual_token_reserves", { precision: 30, scale: 0 }),
   realTokenReserves: numeric("real_token_reserves", { precision: 30, scale: 0 }),
+  /** M6: PumpSwap pool reserves after the latest pool trade/deposit (price source once graduated). */
+  poolBaseReserves: numeric("pool_base_reserves", { precision: 30, scale: 0 }),
+  poolQuoteReserves: numeric("pool_quote_reserves", { precision: 30, scale: 0 }),
   tokenTotalSupply: numeric("token_total_supply", { precision: 30, scale: 0 }),
   /** BTC paid to holders (rewards runs), base units. */
   btcPaidToHolders: numeric("btc_paid_to_holders", { precision: 30, scale: 0 }).notNull().default("0"),

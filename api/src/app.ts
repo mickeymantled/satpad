@@ -10,7 +10,7 @@ import { registerLive, type LiveHub } from "./live";
 import { registerDevFaucet } from "./devFaucet";
 import { registerJupiter, type JupiterOptions } from "./jupiter";
 import { registerMetadata, type MetadataBackend } from "./metadata";
-import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, stats, type CoinSort, type Stage } from "./queries";
+import { COIN_SORTS, coinHolders, coinRewards, coinTrades, getCoin, ledgerFeed, listCoins, reserveRuns, stats, type CoinSort, type Stage } from "./queries";
 
 export interface AppDeps { db: Db; prices: PriceProvider; rpc?: Connection; rateLimitPerMinute?: number; live?: LiveHub; /** Browser origins allowed to call the API (SPEC: CSP/no third-party); "*" only for local dev. */ corsOrigins?: string[]; /** D17: path to the fork wBTC authority keypair; never set outside the fork. */ devFaucetKeypair?: string; /** V10: Jupiter proxy; `null` disables it (e.g. a fork with the dev faucet). */ jupiter?: JupiterOptions | null; /** D18: active metadata backend + public origins for `/m/:id` URIs and the website back-link. */ metadata?: { backend: MetadataBackend; publicUrl: string; webUrl: string; pumpUrl?: string; fetchImpl?: typeof fetch }; /** D14: launch lookup table address served to the web app. */ launchAlt?: string }
 const page = (q: Record<string, unknown>) => ({ limit: Math.min(100, Math.max(1, Number(q["limit"] ?? 25) || 25)), offset: Math.max(0, Number(q["offset"] ?? 0) || 0) });
@@ -60,7 +60,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const c = row.c;
     return {
       ...coinSummary(row, price.usdCents),
-      uri: c.uri, deployer: c.deployer, bondingCurve: c.bondingCurve, pool: c.pool, paused: c.paused, treasuryOnly: c.treasuryOnly, graduatedAt: iso(c.graduatedAt), indexedSlot: c.indexedSlot.toString(),
+      uri: c.uri, deployer: c.deployer, bondingCurve: c.bondingCurve, pool: c.pool, poolReserves: c.poolBaseReserves !== null && c.poolQuoteReserves !== null ? { base: c.poolBaseReserves, quote: c.poolQuoteReserves } : null, paused: c.paused, treasuryOnly: c.treasuryOnly, graduatedAt: iso(c.graduatedAt), indexedSlot: c.indexedSlot.toString(),
       fees: { settles: row.feeTotals.settles, creatorFee: btc(row.feeTotals.fee, price.usdCents), liquidity: btc(row.feeTotals.liquidity, price.usdCents), deployer: btc(row.feeTotals.deployer, price.usdCents) },
       accounts: await feeAccounts(mint),
     };
@@ -85,7 +85,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.get("/ledger", async (req) => {
     const q = req.query as Record<string, string | undefined>; const { limit, offset } = page(q);
     const rows = await ledgerFeed(deps.db, q["type"], limit, offset);
-    return { limit, offset, entries: rows.map((r) => ({ id: r.id.toString(), signature: r.signature, type: r.type, mint: r.mint, actor: r.actor, amounts: Object.fromEntries(Object.entries(r.amounts).map(([k, v]) => [k, btc(v)])), status: r.status, error: r.error, attempts: r.attempts, slot: r.slot?.toString() ?? null, createdAt: iso(r.createdAt), confirmedAt: iso(r.confirmedAt) })) };
+    return { limit, offset, entries: rows.map((r) => ({ id: r.id.toString(), signature: r.signature, type: r.type, mint: r.mint, actor: r.actor, amounts: Object.fromEntries(Object.entries(r.amounts).map(([k, v]) => [k, /^\d+$/.test(v) ? btc(v) : v])) /* non-numeric values such as collect `venue` pass through */, status: r.status, error: r.error, attempts: r.attempts, slot: r.slot?.toString() ?? null, createdAt: iso(r.createdAt), confirmedAt: iso(r.confirmedAt) })) };
   });
 
   /** Priority fee for user transactions (micro-lamports per CU): Helius when the API's RPC is Helius, else recent fees, else min. */
@@ -99,6 +99,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     probe.feePayer = k; probe.recentBlockhash = k.toBase58();
     const fee = await provider.estimate(probe, 1);
     return { microLamportsPerCu: fee.toString(), source: "live", min: feeMin.toString(), max: feeMax.toString() };
+  });
+
+  // M6: the Reserve's LP runs (draw → swap → deposit → burn), newest first, with totals.
+  app.get("/reserve", async (req) => {
+    const { limit, offset } = page(req.query as Record<string, unknown>);
+    const r = await reserveRuns(deps.db, limit, offset);
+    return { limit, offset, totals: { runs: r.totals.runs, btcDrawn: btc(r.totals.drawn), lpMinted: r.totals.minted, lpBurned: r.totals.burned, netLpSupplyChange: (BigInt(r.totals.minted) - BigInt(r.totals.burned)).toString() },
+      runs: r.runs.map((x) => ({ signature: x.signature, btcDrawn: btc(x.btcDrawn), satpadBought: tokens(x.satpadBought), lpMinted: x.lpMinted, lpBurned: x.lpBurned, poolReservesAfter: x.poolReservesAfter, slot: x.slot.toString(), time: iso(x.ranAt) })) };
   });
 
   app.get("/stats", async () => {

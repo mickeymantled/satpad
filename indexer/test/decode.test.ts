@@ -50,6 +50,29 @@ describe("decodeTx on recorded fork transactions", () => {
     expect(d.completes).toHaveLength(1);
     expect(d.completes[0]).toMatchObject({ mint: "ACBjsAS124McHP2eLvWWTWqP5GNqKkfAFnpTEpVKCErF", pool: "5R71nH1nWzwm685kTgQk3Wvr9PmJGMZe9p9iK1knXCBy" });
   });
+  it("PumpSwap buy/sell/deposit fixtures (M6) → pool trades and a deposit record from emit_cpi events", () => {
+    const b = decodeTx(fixture("amm_buy"));
+    expect(b.trades).toHaveLength(0);
+    expect(b.poolTrades).toHaveLength(1);
+    expect(b.poolTrades[0]).toMatchObject({ pool: "DHQwvos83ehJYgns7aWMv1sctXs4rJdg543ASKMPzwJB", side: "buy", tokenAmount: 17332033828582n });
+    expect(b.poolTrades[0]!.btcAmount).toBeGreaterThan(900_000n);
+    expect(b.poolTrades[0]!.creatorFeeBtc).toBeGreaterThan(0n);
+    const s = decodeTx(fixture("amm_sell"));
+    expect(s.poolTrades[0]).toMatchObject({ side: "sell", tokenAmount: 4333008457145n });
+    expect(s.poolTrades[0]!.btcAmount).toBeGreaterThanOrEqual(260214n); // pool-side quote out; the user received 260,214 after fees
+    const d = decodeTx(fixture("amm_deposit_burn"));
+    expect(d.deposits).toHaveLength(1);
+    expect(d.deposits[0]).toMatchObject({ pool: "DHQwvos83ehJYgns7aWMv1sctXs4rJdg543ASKMPzwJB", lpTokenOut: 254335337n });
+    expect(d.deposits[0]!.quoteIn).toBeLessThanOrEqual(50_500n);
+  });
+  it("lp_run (draw_lp + buy + deposit + burn in one v0 tx) → LpDrawn, one pool buy and one deposit", () => {
+    const d = decodeTx(fixture("lp_run"));
+    expect(d.vaultOther.map((e) => e.name)).toContain("LpDrawn");
+    expect(d.poolTrades).toHaveLength(1);
+    expect(d.poolTrades[0]!.side).toBe("buy");
+    expect(d.deposits).toHaveLength(1);
+    expect(d.deposits[0]!.lpTokenOut).toBe(3803878n);
+  });
   it("sell_v2 → one curve sell", () => {
     const d = decodeTx(fixture("sell_v2"));
     expect(d.trades).toHaveLength(1);

@@ -61,3 +61,8 @@
   read from `emit_cpi` self-CPI inner instructions first, then from logs, de-duplicated. Reason: a launch
   (create_v2 + declare_coin + buy_v2 in one v0 transaction) overflows the runtime's log limit and ends with
   "Log truncated", which lost the first buy's `TradeEvent`. Fixture `launch_v0.json` + decoder test.
+
+## Addendum 2026-10-05 (M6 task 7)
+- `cpiEvents()` generalises the `emit_cpi` reader; `pumpAmmEvents()` decodes PumpSwap events with the pinned `idl-ref/pump_amm_sdk1.20.0.json`. `BuyEvent`/`SellEvent` → `poolTrades` (pool-side quote amounts, coin creator fee, pool reserves); the processor resolves `coins.pool` → mint and inserts them as `venue = pool` trades (ixIndex offset 1000), updating counters/stage like curve trades. `DepositEvent` + `LpDrawn` in one tx → `lp_runs` with `satpad_bought`, `lp_minted`, `lp_burned` (minted minus the user LP account's net change) and `pool_reserves_after`.
+- Fixtures: `amm_buy`, `amm_sell`, `amm_deposit_burn`, `amm_collect`, `lp_run`, `buyout_complete`, `migrate_v2`.
+- Lessons from `fork-api-check` on the M6 stack: PumpSwap events carry **pre-instruction** reserves, so `coins.pool_*_reserves` and `lp_runs.pool_reserves_after` come from the transaction's post token balances (owner = pool); `migrate_v2` drains the curve, so the migration event zeroes the curve columns; transactions reach the processor out of slot order across polled addresses (pool vs vault program), so reserve columns only move forward (`indexed_slot <= tx.slot`), counters stay order-independent. `scripts/fork-api-check.ts` now also compares pool reserves with the pool token accounts, waits for pool activity to be indexed, and verifies `lp_deposit` rows against `LpDrawn`.

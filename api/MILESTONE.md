@@ -20,3 +20,6 @@
 ## Deferred
 - `PRICE_SOURCE=pyth` is implemented (V7) but can only run against mainnet/devnet RPC; the fork uses the fixed price.
 - `trending` sort is 1 h trade count then 24 h volume — revisit with real data (M5/M9).
+
+## Addendum 2026-10-05 (M6 task 7)
+- `GET /reserve?limit&offset`: LP runs newest first (`btcDrawn`, `satpadBought`, `lpMinted`, `lpBurned`, `poolReservesAfter`, slot, time) with totals incl. `netLpSupplyChange` (must stay 0). `GET /stats.satpadBurned` sums confirmed keeper `buyback` ledger rows (`amounts.burned`).

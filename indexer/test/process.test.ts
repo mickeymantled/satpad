@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
 import { eq } from "drizzle-orm";
-import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, fees, holders, trades, type Db } from "@satpad/db";
+import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, fees, holders, lpRuns, trades, type Db } from "@satpad/db";
 import { runMigrations } from "@satpad/db/src/migrate";
 import { bondingCurvePda } from "@pump-fun/pump-sdk";
 import { PublicKey } from "@solana/web3.js";
@@ -79,5 +79,32 @@ describe("Processor (Postgres)", async () => {
     const s = decodeTx(settle).settles[0]!;
     expect(f[0]).toMatchObject({ mint: settleMint, creatorFeeBtc: s.amount.toString(), liquidity: s.liquidity.toString(), deployer: s.deployer.toString() });
     expect(p.stats).toMatchObject({ processed: 2, duplicates: 1, settles: 1 });
+  });
+
+  it("M6: PumpSwap trades resolve pool → mint (venue pool), an LP run merges draw, buy, deposit and burn into lp_runs", async () => {
+    const p = new Processor(db);
+    const ammBuy = fixture("amm_buy"), lpRun = fixture("lp_run");
+    const pool = decodeTx(ammBuy).poolTrades[0]!.pool;
+    expect(await p.handle(ammBuy)).toBe(true);
+    expect(await db.select().from(trades).where(eq(trades.venue, "pool"))).toHaveLength(0); // pool unknown
+    await db.insert(coins).values({ mint: "DdCUuvmf9p1MQUGEc8MNRwcag2SGM6CunepRYr9JuQxM", deployer: "D", payee: "D", payeeMode: "wallet", bondingCurve: "BC1", pool, stage: "block", createdAt: new Date() });
+    expect(await new Processor(db).handle({ ...ammBuy, signature: ammBuy.signature + "y" })).toBe(true);
+    const rows = await db.select().from(trades).where(eq(trades.venue, "pool"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ mint: "DdCUuvmf9p1MQUGEc8MNRwcag2SGM6CunepRYr9JuQxM", side: "buy", tokenAmount: "17332033828582" });
+    const [c] = await db.select().from(coins).where(eq(coins.mint, "DdCUuvmf9p1MQUGEc8MNRwcag2SGM6CunepRYr9JuQxM"));
+    expect(c).toMatchObject({ buys: 1, stage: "block", virtualQuoteReserves: null }); // curve columns untouched by pool trades
+    // post-transaction pool balances, not the event's pre-trade reserves (pre-trade quote was 8,567,366)
+    expect(BigInt(c!.poolQuoteReserves!)).toBeGreaterThan(8_567_366n);
+    expect(BigInt(c!.poolBaseReserves!)).toBeLessThan(206_900_000_000_000n);
+    const postQuote = ammBuy.postTokenBalances.find((b) => b.owner === pool && b.mint === "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh")!.amount;
+    expect(c!.poolQuoteReserves).toBe(postQuote.toString());
+    const lpPool = decodeTx(lpRun).deposits[0]!.pool;
+    await db.insert(coins).values({ mint: "5nhUCusYkhBcgPHFSAKc5kjHbMURXr5MUXqtB4tAVUfj", deployer: "A", payee: "A", payeeMode: "wallet", bondingCurve: "BC2", pool: lpPool, stage: "block", treasuryOnly: true, createdAt: new Date() });
+    expect(await new Processor(db).handle(lpRun)).toBe(true);
+    const runs = await db.select().from(lpRuns);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ signature: lpRun.signature, btcDrawn: "2021", satpadBought: "14827511324", lpMinted: "3803878", lpBurned: "3803878" });
+    expect(runs[0]!.poolReservesAfter?.base).toMatch(/^\d+$/);
   });
 });

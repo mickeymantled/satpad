@@ -107,3 +107,6 @@ Unit tests: web 20, API 23 (incl. metadata + Jupiter proxy), indexer 21 (incl. l
 - Bring the maximal launch back into one transaction (shorter fallback metadata ids, more static accounts in the table) — D20.
 - Wallet-adapter production wallets (Phantom/Solflare/Backpack) are exercised only via Wallet Standard discovery; the e2e uses the burner.
 - `/btc`, `/ledger`, `/docs` remain stubs (M8/M9).
+
+## Addendum 2026-10-05 (M6 task 7)
+- `TradePanel` trades on the PumpSwap pool once `coin.pool` is set (`data-venue="pool"`): quotes from `ammSwapState` + `ammQuoteTokensForSats`/`ammQuoteSatsForSell` at the chosen slippage, instructions from `buildAmmBuy`/`buildAmmSell` rebuilt against a fresh state for the connected wallet. e2e `pool.spec.ts` (M6 stack): SOL-only burner → faucet → buy 0.0001 BTC and sell 1,000 tokens on the pool; both appear as trades.

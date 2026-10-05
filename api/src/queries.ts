@@ -1,7 +1,7 @@
 // Read models over the indexer tables. Derived numbers (mcap, progress, 24h volume) are computed here, in SQL where
 // they need aggregation, with bigint/numeric only.
 import { and, desc, eq, gt, gte, sql, type SQL } from "drizzle-orm";
-import { coins, fees, holders, ledger, rewardsRuns, trades, type Db } from "@satpad/db";
+import { coins, fees, holders, ledger, lpRuns, rewardsRuns, trades, type Db } from "@satpad/db";
 import { INITIAL_REAL_TOKEN_RESERVES } from "@satpad/sdk";
 
 export type CoinSort = "volume24h" | "newest" | "mcap" | "trending" | "pays_holders";
@@ -9,7 +9,8 @@ export const COIN_SORTS: CoinSort[] = ["volume24h", "newest", "mcap", "trending"
 export type Stage = "dust" | "mining" | "block";
 
 /** Market cap in sats: price per token (vq/vt) × total supply. 0 before the first trade. */
-export const mcapSatsSql = sql<string>`coalesce(floor((${coins.virtualQuoteReserves} * ${coins.tokenTotalSupply}) / nullif(${coins.virtualTokenReserves}, 0)), 0)::numeric(40,0)`;
+/** Market cap in sats: pool price once graduated (M6), else the curve's virtual reserves. */
+export const mcapSatsSql = sql<string>`coalesce(case when ${coins.poolQuoteReserves} is not null and ${coins.poolBaseReserves} > 0 then floor((${coins.poolQuoteReserves} * ${coins.tokenTotalSupply}) / ${coins.poolBaseReserves}) else floor((${coins.virtualQuoteReserves} * ${coins.tokenTotalSupply}) / nullif(${coins.virtualTokenReserves}, 0)) end, 0)::numeric(40,0)`;
 /** 10000 − real_token_reserves / initial_real × 10000, clamped. */
 export const progressBpsSql = sql<number>`least(10000, greatest(0, 10000 - floor(coalesce(${coins.realTokenReserves}, ${INITIAL_REAL_TOKEN_RESERVES.toString()}) * 10000 / ${INITIAL_REAL_TOKEN_RESERVES.toString()})))::int`;
 const vol24 = (db: Db) => db.select({ mint: trades.mint, v: sql<string>`sum(${trades.btcAmount})`.as("v"), n: sql<number>`count(*)::int`.as("n") }).from(trades).where(gte(trades.blockTime, sql`now() - interval '24 hours'`)).groupBy(trades.mint).as("v24");
@@ -50,5 +51,14 @@ export async function stats(db: Db) {
   const [c] = await db.select({ coins: sql<number>`count(*)::int`, paidToHolders: sql<string>`coalesce(sum(${coins.btcPaidToHolders}), 0)` }).from(coins);
   const [f] = await db.select({ liquidity: sql<string>`coalesce(sum(${fees.liquidity}), 0)`, buyback: sql<string>`coalesce(sum(${fees.buyback}), 0)`, fees: sql<string>`coalesce(sum(${fees.creatorFeeBtc}), 0)` }).from(fees);
   const [t] = await db.select({ today: sql<string>`coalesce(sum(${trades.btcAmount}), 0)`, trades: sql<number>`count(*)::int` }).from(trades).where(gte(trades.blockTime, sql`now() - interval '24 hours'`));
-  return { coins: c!.coins, btcIntoLiquidity: f!.liquidity, btcToBuyback: f!.buyback, creatorFees: f!.fees, btcPaidToHolders: c!.paidToHolders, btcTradedToday: t!.today, tradesToday: t!.trades, satpadBurned: "0" };
+  // $SATPAD burned = the keeper's confirmed buyback rows (each buys on the pool and burns in one transaction, M6).
+  const [b] = await db.select({ burned: sql<string>`coalesce(sum((${ledger.amounts}->>'burned')::numeric), 0)` }).from(ledger).where(sql`${ledger.type} = 'buyback' and ${ledger.status} = 'confirmed'`);
+  return { coins: c!.coins, btcIntoLiquidity: f!.liquidity, btcToBuyback: f!.buyback, creatorFees: f!.fees, btcPaidToHolders: c!.paidToHolders, btcTradedToday: t!.today, tradesToday: t!.trades, satpadBurned: b!.burned };
+}
+
+/** SPEC "Published addresses": every LP run with draw, buy, mint and burn amounts; LP burned must equal LP minted. */
+export async function reserveRuns(db: Db, limit: number, offset: number) {
+  const runs = await db.select().from(lpRuns).orderBy(desc(lpRuns.slot)).limit(limit).offset(offset);
+  const [tot] = await db.select({ runs: sql<number>`count(*)::int`, drawn: sql<string>`coalesce(sum(${lpRuns.btcDrawn}), 0)`, minted: sql<string>`coalesce(sum(${lpRuns.lpMinted}), 0)`, burned: sql<string>`coalesce(sum(${lpRuns.lpBurned}), 0)` }).from(lpRuns);
+  return { runs, totals: tot! };
 }

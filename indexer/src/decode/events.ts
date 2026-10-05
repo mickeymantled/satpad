@@ -6,11 +6,13 @@ import { PublicKey } from "@solana/web3.js";
 import { BorshCoder, EventParser, type Idl } from "@coral-xyz/anchor";
 import BN from "bn.js";
 import bs58 from "bs58";
-import { PUMP_PROGRAM_ID, parseVaultEvents } from "@satpad/sdk";
+import { PUMP_AMM_PROGRAM_ID, PUMP_PROGRAM_ID, parseVaultEvents } from "@satpad/sdk";
 import type { NormalizedTx } from "./tx";
 
 const pumpIdl = JSON.parse(readFileSync(path.resolve(__dirname, "../../../idl-ref/pump.json"), "utf8")) as Idl;
 const pumpCoder = new BorshCoder(pumpIdl);
+const ammIdl = JSON.parse(readFileSync(path.resolve(__dirname, "../../../idl-ref/pump_amm_sdk1.20.0.json"), "utf8")) as Idl;
+const ammCoder = new BorshCoder(ammIdl);
 const pumpParser = new EventParser(PUMP_PROGRAM_ID, pumpCoder);
 /** Anchor `emit_cpi!`: a self-CPI whose data is this 8-byte discriminator + event discriminator + borsh event. */
 const EVENT_CPI_DISCRIMINATOR = Buffer.from([0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d]);
@@ -20,6 +22,21 @@ const EVENT_CPI_DISCRIMINATOR = Buffer.from([0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb,
  * runtime's log limit — a launch (create_v2 + declare_coin + buy_v2) overflows it and ends with "Log truncated".
  * Logged events (`emit!`) are added only when not already seen, so an event emitted both ways counts once.
  */
+/** Anchor `emit_cpi!` events of `programId` from the inner instructions (M6: PumpSwap emits only this way). */
+export function cpiEvents(tx: NormalizedTx, programId: PublicKey, coder: BorshCoder): { name: string; data: Record<string, unknown> }[] {
+  const out: { name: string; data: Record<string, unknown> }[] = [];
+  const pid = programId.toBase58();
+  for (const ix of tx.innerInstructions) {
+    if (ix.programId !== pid) continue;
+    const bytes = Buffer.from(bs58.decode(ix.data));
+    if (bytes.length < 16 || !bytes.subarray(0, 8).equals(EVENT_CPI_DISCRIMINATOR)) continue;
+    const ev = coder.events.decode(bytes.subarray(8).toString("base64"));
+    if (ev) out.push({ name: ev.name, data: ev.data as Record<string, unknown> });
+  }
+  return out;
+}
+export const pumpAmmEvents = (tx: NormalizedTx) => cpiEvents(tx, PUMP_AMM_PROGRAM_ID, ammCoder);
+
 export function pumpEvents(tx: NormalizedTx): { name: string; data: Record<string, unknown> }[] {
   const out: { name: string; data: Record<string, unknown> }[] = [];
   const seen = new Set<string>();
@@ -57,15 +74,19 @@ export interface SettledRecord { signature: string; mint: string; amount: bigint
 export interface PayeePaidRecord { signature: string; mint: string; payee: string; amount: bigint; slot: bigint; blockTime: number | null }
 export interface VaultOtherRecord { signature: string; name: string; data: Record<string, unknown>; slot: bigint; blockTime: number | null }
 export interface HolderUpdate { mint: string; wallet: string; balance: bigint; slot: bigint }
+/** PumpSwap trade: the event names the pool, not the mint — the processor resolves `coins.pool` → mint. */
+export interface PoolTradeRecord { signature: string; ixIndex: number; pool: string; side: "buy" | "sell"; btcAmount: bigint; tokenAmount: bigint; trader: string; slot: bigint; blockTime: number | null; creatorFeeBtc: bigint; poolBaseReserves: bigint; poolQuoteReserves: bigint }
+export interface DepositRecord { signature: string; pool: string; user: string; userPoolTokenAccount: string; lpTokenOut: bigint; baseIn: bigint; quoteIn: bigint; poolBaseReserves: bigint; poolQuoteReserves: bigint; lpMintSupply: bigint }
 
 export interface Decoded {
   trades: TradeRecord[]; creates: CreateRecord[]; completes: CompleteRecord[]; collects: CollectRecord[];
   settles: SettledRecord[]; payouts: PayeePaidRecord[]; vaultOther: VaultOtherRecord[]; holders: HolderUpdate[];
+  poolTrades: PoolTradeRecord[]; deposits: DepositRecord[];
 }
 
 /** Decodes everything relevant in one transaction. Failed transactions yield nothing. */
 export function decodeTx(tx: NormalizedTx): Decoded {
-  const out: Decoded = { trades: [], creates: [], completes: [], collects: [], settles: [], payouts: [], vaultOther: [], holders: [] };
+  const out: Decoded = { trades: [], creates: [], completes: [], collects: [], settles: [], payouts: [], vaultOther: [], holders: [], poolTrades: [], deposits: [] };
   if (tx.failed) return out;
   let ixIndex = 0;
   for (const e of pumpEvents(tx)) {
@@ -97,6 +118,21 @@ export function decodeTx(tx: NormalizedTx): Decoded {
         break;
       default:
         break;
+    }
+  }
+  let poolIx = 0;
+  for (const e of pumpAmmEvents(tx)) {
+    const d = e.data;
+    if (e.name === "BuyEvent" || e.name === "SellEvent") {
+      const buy = e.name === "BuyEvent";
+      out.poolTrades.push({
+        signature: tx.signature, ixIndex: poolIx++, pool: key(d["pool"]), side: buy ? "buy" : "sell", trader: key(d["user"]),
+        btcAmount: big(buy ? d["quote_amount_in"] : d["quote_amount_out"]), tokenAmount: big(buy ? d["base_amount_out"] : d["base_amount_in"]),
+        creatorFeeBtc: big(d["coin_creator_fee"]), poolBaseReserves: big(d["pool_base_token_reserves"]), poolQuoteReserves: big(d["pool_quote_token_reserves"]),
+        slot: tx.slot, blockTime: tx.blockTime,
+      });
+    } else if (e.name === "DepositEvent") {
+      out.deposits.push({ signature: tx.signature, pool: key(d["pool"]), user: key(d["user"]), userPoolTokenAccount: key(d["user_pool_token_account"]), lpTokenOut: big(d["lp_token_amount_out"]), baseIn: big(d["base_amount_in"]), quoteIn: big(d["quote_amount_in"]), poolBaseReserves: big(d["pool_base_token_reserves"]), poolQuoteReserves: big(d["pool_quote_token_reserves"]), lpMintSupply: big(d["lp_mint_supply"]) });
     }
   }
   for (const e of parseVaultEvents(tx.logMessages)) {

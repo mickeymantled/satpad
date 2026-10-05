@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
-import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, fees, holders, ledger, trades, type Db } from "@satpad/db";
+import { DEFAULT_LOCAL_DATABASE_URL, coins, connect, fees, holders, ledger, lpRuns, trades, type Db } from "@satpad/db";
 import { runMigrations } from "@satpad/db/src/migrate";
 import { Keypair } from "@solana/web3.js";
 import type { FastifyInstance } from "fastify";
@@ -100,5 +100,24 @@ describe("API (Postgres)", async () => {
     for (let i = 0; i < 3; i++) codes.push((await tight.inject({ method: "GET", url: "/stats" })).statusCode);
     expect(codes).toEqual([200, 200, 429]);
     await tight.close();
+  });
+
+  it("M6: /reserve lists LP runs with totals and /stats counts burned $SATPAD from confirmed buyback rows", async () => {
+    await db.insert(lpRuns).values([{ signature: "lp1", btcDrawn: "2021", satpadBought: "14827511324", lpMinted: "3803878", lpBurned: "3803878", poolReservesAfter: { base: "1", quote: "2" }, slot: 10n, ranAt: new Date() }]);
+    await db.insert(ledger).values([
+      { type: "buyback", actor: "B", amounts: { sats: "2015", tokens: "33126834583", burned: "33126834583" }, status: "confirmed", attempts: 1 },
+      { type: "buyback", actor: "B", amounts: { sats: "1", tokens: "5", burned: "5" }, status: "failed", attempts: 1 },
+    ]);
+    const r = await app.inject({ method: "GET", url: "/reserve" });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().totals).toMatchObject({ runs: 1, lpMinted: "3803878", lpBurned: "3803878", netLpSupplyChange: "0" });
+    expect(r.json().runs[0]).toMatchObject({ signature: "lp1", lpBurned: "3803878" });
+    // ledger rows may carry non-numeric amounts (collect `venue`): formatted amounts for numbers, strings pass through
+    await db.insert(ledger).values([{ type: "collect_creator_fee", mint: "M9", actor: "k", amounts: { unclaimed: "12522", venue: "pool" }, status: "confirmed", attempts: 1 }]);
+    const l = await app.inject({ method: "GET", url: "/ledger?type=collect_creator_fee" });
+    expect(l.statusCode).toBe(200);
+    expect(l.json().entries[0].amounts).toMatchObject({ venue: "pool", unclaimed: { base: "12522" } });
+    const s = await app.inject({ method: "GET", url: "/stats" });
+    expect(s.json().satpadBurned).toMatchObject({ base: "33126834583" });
   });
 });

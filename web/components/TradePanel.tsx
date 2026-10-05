@@ -3,12 +3,12 @@
 // every tx simulated and previewed. The quote ATA is created idempotently so first-time sellers/buyers never fail
 // on a missing account. "Buy with native BTC" opens the bridge (M8).
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, type TransactionInstruction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { OnlinePumpSdk, PUMP_SDK, bondingCurvePda, type BondingCurve, type FeeConfig, type Global, type QuoteControl } from "@pump-fun/pump-sdk";
-import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, COIN_TOKEN_PROGRAM, buildBuyV2, buildSellV2, coinFeePda, defaultFeeRecipients, parseBtc, quoteSatsForSell, quoteSatsForTokens, quoteTokensForSats, sats as toSats, toUi } from "@satpad/sdk";
+import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, COIN_TOKEN_PROGRAM, ammQuoteSatsForSell, ammQuoteTokensForSats, ammSwapState, buildAmmBuy, buildAmmSell, buildBuyV2, buildSellV2, coinFeePda, defaultFeeRecipients, parseBtc, quoteSatsForSell, quoteSatsForTokens, quoteTokensForSats, sats as toSats, toUi, type SwapSolanaState } from "@satpad/sdk";
 import { btc, sats as fmtSats, tokens as fmtTokens } from "@/lib/format";
 import { useTx } from "@/lib/useTx";
 import { TxPreviewModal } from "./TxPreviewModal";
@@ -20,7 +20,8 @@ function interestingLogs(logs: string[]): string {
   return logs.filter((l) => l.includes("Program log") || l.includes("failed") || l.includes("Error")).slice(-15).join("\n");
 }
 
-export function TradePanel({ mint, symbol }: { mint: string; symbol: string | null }) {
+/** `pool`: after graduation the panel trades on the PumpSwap pool (SPEC "Trading": PumpSwap buy/sell once graduated). */
+export function TradePanel({ mint, symbol, pool }: { mint: string; symbol: string | null; pool?: string | null }) {
   const { connection } = useConnection();
   const tx = useTx();
   const mintPk = new PublicKey(mint);
@@ -28,27 +29,50 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
   const [input, setInput] = useState("");
   const [slippageBps, setSlippageBps] = useState(100);
   const [state, setState] = useState<CurveState | null>(null);
+  const [poolState, setPoolState] = useState<SwapSolanaState | null>(null);
+  const poolPk = useMemo(() => (pool ? new PublicKey(pool) : null), [pool]);
   const [balances, setBalances] = useState<{ wbtc: bigint; coin: bigint } | null>(null);
   const [quote, setQuote] = useState<{ out: bigint; in: bigint } | null>(null);
   const [err, setErr] = useState("");
 
   const refresh = useCallback(async () => {
-    const online = new OnlinePumpSdk(connection);
-    const [global, feeConfig, quoteControl, info] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig(), online.fetchQuoteControl(), connection.getAccountInfo(bondingCurvePda(mintPk), "confirmed")]);
-    if (!info) throw new Error("bonding curve not found");
-    const curve = PUMP_SDK.decodeBondingCurve(info);
-    setState({ global, feeConfig, quoteControl, curve, supply: BigInt(curve.tokenTotalSupply.toString()) });
+    if (poolPk) {
+      setPoolState(await ammSwapState(connection, poolPk, tx.publicKey ?? PublicKey.default));
+    } else {
+      const online = new OnlinePumpSdk(connection);
+      const [global, feeConfig, quoteControl, info] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig(), online.fetchQuoteControl(), connection.getAccountInfo(bondingCurvePda(mintPk), "confirmed")]);
+      if (!info) throw new Error("bonding curve not found");
+      const curve = PUMP_SDK.decodeBondingCurve(info);
+      setState({ global, feeConfig, quoteControl, curve, supply: BigInt(curve.tokenTotalSupply.toString()) });
+    }
     if (tx.publicKey) {
       const wb = await getAccount(connection, getAssociatedTokenAddressSync(BTC_QUOTE_MINT, tx.publicKey, true, BTC_QUOTE_TOKEN_PROGRAM), "confirmed", BTC_QUOTE_TOKEN_PROGRAM).then((a) => a.amount).catch(() => 0n);
       const cb = await getAccount(connection, getAssociatedTokenAddressSync(mintPk, tx.publicKey, true, COIN_TOKEN_PROGRAM), "confirmed", COIN_TOKEN_PROGRAM).then((a) => a.amount).catch(() => 0n);
       setBalances({ wbtc: wb, coin: cb });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connection, mint, tx.publicKey]);
+  }, [connection, mint, pool, tx.publicKey]);
   useEffect(() => { refresh().catch((e) => setErr((e as Error).message)); const t = setInterval(() => refresh().catch(() => {}), 10_000); return () => clearInterval(t); }, [refresh]);
 
   useEffect(() => {
     setErr("");
+    if (poolPk) {
+      if (!poolState || !input) { setQuote(null); return; }
+      try {
+        const slipPct = slippageBps / 100;
+        if (side === "buy") {
+          const spend = parseBtc(input);
+          const q = ammQuoteTokensForSats(poolState, spend, slipPct);
+          if (q.tokens <= 0n) throw new Error("amount too small");
+          setQuote({ in: spend, out: q.tokens });
+        } else {
+          const amount = BigInt(Math.round(Number(input) * 1e6));
+          if (amount <= 0n) throw new Error("amount too small");
+          setQuote({ in: amount, out: ammQuoteSatsForSell(poolState, amount, slipPct).sats });
+        }
+      } catch (e) { setQuote(null); setErr((e as Error).message); }
+      return;
+    }
     if (!state || !input) { setQuote(null); return; }
     try {
       const inputs = { global: state.global, feeConfig: state.feeConfig, mintSupply: state.supply, bondingCurve: state.curve, quoteControl: state.quoteControl };
@@ -63,10 +87,22 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
         setQuote({ in: amount, out: quoteSatsForSell({ ...inputs, mintSupply: state.supply, bondingCurve: state.curve }, amount) });
       }
     } catch (e) { setQuote(null); setErr((e as Error).message); }
-  }, [input, side, state]);
+  }, [input, side, state, poolState, poolPk, slippageBps]);
 
   const submit = async () => {
-    if (!state || !quote || !tx.publicKey) return;
+    if (!quote || !tx.publicKey) return;
+    if (poolPk) {
+      const slipPct = slippageBps / 100;
+      try {
+        const fresh = await ammSwapState(connection, poolPk, tx.publicKey); // user-specific ATAs
+        const ixs = side === "buy"
+          ? await buildAmmBuy(fresh, quote.out, ammQuoteTokensForSats(fresh, quote.in, slipPct).maxQuoteIn)
+          : await buildAmmSell(fresh, quote.in, ammQuoteSatsForSell(fresh, quote.in, slipPct).minQuoteOut);
+        await tx.send(side === "buy" ? `Buy ${symbol ?? "coin"} (pool)` : `Sell ${symbol ?? "coin"} (pool)`, ixs); setInput(""); await refresh();
+      } catch { /* shown via tx.error */ }
+      return;
+    }
+    if (!state) return;
     const recipients = defaultFeeRecipients(state.global);
     const [coinFee] = coinFeePda(mintPk);
     const quoteAta = getAssociatedTokenAddressSync(BTC_QUOTE_MINT, tx.publicKey, true, BTC_QUOTE_TOKEN_PROGRAM);
@@ -79,7 +115,8 @@ export function TradePanel({ mint, symbol }: { mint: string; symbol: string | nu
   };
 
   return (
-    <div className="card p-4 space-y-3" data-testid="trade-panel">
+    <div className="card p-4 space-y-3" data-testid="trade-panel" data-venue={poolPk ? "pool" : "curve"}>
+      {poolPk && <div className="text-xs" style={{ color: "var(--muted)" }}>Graduated — trading on the PumpSwap pool</div>}
       {tx.preview && <TxPreviewModal preview={tx.preview.p} title={tx.preview.title} onConfirm={() => tx.preview?.resolve(true)} onCancel={() => tx.preview?.resolve(false)} />}
       <div className="flex gap-2">
         <button className={`btn flex-1 ${side === "buy" ? "btn-accent" : ""}`} onClick={() => { setSide("buy"); setInput(""); }} data-testid="side-buy">Buy</button>

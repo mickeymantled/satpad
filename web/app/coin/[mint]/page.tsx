@@ -37,7 +37,7 @@ export default async function CoinPage({ params }: { params: Promise<{ mint: str
         <CoinTabs trades={trades.trades} holders={holders.holders} symbol={coin.symbol} />
       </div>
       <aside className="space-y-4">
-        <TradePanel mint={mint} symbol={coin.symbol} />
+        <TradePanel mint={mint} symbol={coin.symbol} pool={coin.pool} />
         <div className="card p-4 text-sm space-y-2" data-testid="fee-accounts">
           <div className="font-medium">Deployer share → {coin.payeeMode === "holders" ? "holders (permanent)" : <a href={explorerAccount(coin.payee)} target="_blank" rel="noreferrer" className="underline num">{short(coin.payee, 6)}</a>}</div>
           <div className="text-xs" style={{ color: "var(--muted)" }}>Deployer <a href={explorerAccount(coin.deployer)} target="_blank" rel="noreferrer" className="underline num">{short(coin.deployer)}</a></div>
