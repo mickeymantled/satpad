@@ -69,6 +69,20 @@ CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-por
   --clone 4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo  # sponsored BTC/USD price update account, shard 0
   # --- PumpSwap (M6): global_config read by pump's migrate_v2 and every AMM instruction ---
   --clone ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw  # pump_amm global_config (seed "global_config")
+  --clone 5PHirr8joyTMp9JMm6nW7hNDVyEYdkzDqazxPD7RaTjx  # pump_fees fee_config for the AMM (swap-sdk PUMP_AMM_FEE_CONFIG_PDA; buy/sell fee tiers)
+  --clone C2aFPdENg4A2HQsmrd5rTw5TaYBX5Ku887cWjbFKtZpw  # pump_amm global_volume_accumulator (buy/sell)
+  # wBTC ATAs of the AMM global_config protocol/buyback/reserved fee recipients (the swap SDK picks one per trade); the
+  # two already cloned above for the curve (Dxe22…, 7yLvEg…) are shared.
+  --clone Dxe22pvU3G24atApYGQY6EhgD1NNiTQSqNaP77chkd9H
+  --clone 3kNDLwBdPDmYEtrruobtyKDgyuJmEJGgm6NUoAntQ1JK
+  --clone DsvJHs8Fn2D3eqpYMQqhMBJXanb6gYdZwNDMrPT231cG
+  --clone 6bUYj93fFBAqXuanrdZqQ4CPtU1g3nGRm14N8Gqeifdj
+  --clone Creg58tUA3zM2FKkSnF6seq5fmyfNAwz5QHpkNcKyLL2
+  --clone EXznfZzYx6k8xjsLRQJd5zxiWCeNpiU3wWZ4RLHvYwEJ
+  --clone 9nbD2HTGGXuNqMLZq7UqkZJEazpYRkeQaUgXABk2XVNJ
+  --clone B7pvLSNm4bWzuEtB8iDfpvzyzKeaBhTDUKRCxTAfiHAZ
+  --clone 51yYvkYFBpxCg5PYaGiSTgr4hkE8ooPHp18PrsKjgvTg
+  --clone 9nfAM2UaG4DbaGBcQAUrKs7SCGzHiTvg3oxpqfSXT6tf
 )
 
 if [[ $DRY -eq 1 ]]; then
