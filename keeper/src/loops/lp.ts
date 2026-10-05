@@ -60,9 +60,11 @@ export async function lpTick(deps: LpDeps, config: Config): Promise<LpResult> {
   if (config.satpadPool.equals(PublicKey.default) || config.satpadMint.equals(PublicKey.default)) return { skipped: "satpad pool not set (bootstrap first)" };
   const wallet = deps.lpWallet.publicKey;
   if (!config.lpWallet.equals(wallet)) throw new Error(`LP keypair ${wallet.toBase58()} is not Config.lp_wallet ${config.lpWallet.toBase58()}`);
-  const nowS = BigInt(Math.floor((deps.now ?? Date.now)() / 1000));
+  // The program compares against the cluster clock, which can trail the host clock (18 s observed on the fork), so gate
+  // on chain time plus a 5 s margin; otherwise draw_lp fails LpDrawTooSoon in simulation.
+  const nowS = BigInt(deps.now ? Math.floor(deps.now() / 1000) : await deps.chain.unixTime());
   const since = nowS - config.lastLpDrawTs;
-  if (config.lastLpDrawTs !== 0n && since < config.lpDrawIntervalSecs) return { skipped: `last draw ${since}s ago (< ${config.lpDrawIntervalSecs}s)` };
+  if (config.lastLpDrawTs !== 0n && since < config.lpDrawIntervalSecs + 5n) return { skipped: `last draw ${since}s ago (< ${config.lpDrawIntervalSecs}s + margin)` };
   const [pot, walletSats, walletTokens] = await deps.chain.tokenBalances([lpPotPda()[0], ata(BTC_QUOTE_MINT, wallet, BTC_QUOTE_TOKEN_PROGRAM), ata(config.satpadMint, wallet, COIN_TOKEN_PROGRAM)]);
   const potBal = pot ?? 0n;
   const draw = potBal < config.lpDrawMax ? potBal : config.lpDrawMax;

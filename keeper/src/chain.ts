@@ -8,6 +8,8 @@ export interface ChainReader {
   tokenBalance(ata: PublicKey): Promise<bigint | null>;
   tokenBalances(atas: PublicKey[]): Promise<(bigint | null)[]>;
   vaultConfig(): Promise<Config>;
+  /** Cluster time in seconds (block time of the latest slot): on-chain interval gates must use this, not the host clock. */
+  unixTime(): Promise<number>;
   /** Total supply of a mint (LP-supply guard, SPEC "Published addresses"). */
   mintSupply(mint: PublicKey, tokenProgram: PublicKey): Promise<bigint>;
   slot(): Promise<bigint>;
@@ -31,6 +33,11 @@ export class RpcChainReader implements ChainReader {
       });
     }
     return out;
+  }
+  async unixTime(): Promise<number> {
+    const t = await this.conn.getBlockTime(await this.conn.getSlot("confirmed"));
+    if (t === null) throw new Error("block time unavailable");
+    return t;
   }
   async mintSupply(mint: PublicKey, tokenProgram: PublicKey): Promise<bigint> {
     return (await getMint(this.conn, mint, "confirmed", tokenProgram)).supply;

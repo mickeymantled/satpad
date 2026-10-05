@@ -20,7 +20,8 @@ async function main() {
     const config = await fetchConfig(conn);
     if (!config || config.satpadPool.equals(PublicKey.default)) throw new Error("Config.satpad_pool not set");
     const rows = await db.select().from(ledger).where(eq(ledger.type, "lp_deposit")).orderBy(desc(ledger.id));
-    const confirmed = rows.filter((r) => r.status === "confirmed"), failed = rows.filter((r) => r.status === "failed");
+    // a failed row that was never sent (simulation refused it) touched nothing on chain: reported, not fatal
+    const confirmed = rows.filter((r) => r.status === "confirmed"), failed = rows.filter((r) => r.status === "failed" && r.signature !== null), refused = rows.filter((r) => r.status === "failed" && r.signature === null);
     if (confirmed.length < minRuns) problems.push(`only ${confirmed.length} confirmed lp_deposit rows (need ${minRuns})`);
     if (failed.length > 0) problems.push(`${failed.length} failed lp_deposit rows: ${failed.map((r) => r.error).join("; ").slice(0, 200)}`);
     let mintedLedger = 0n, burnedLedger = 0n, drawnLedger = 0n;
@@ -43,7 +44,7 @@ async function main() {
     if (!pool.lpMint.equals(config.satpadLpMint)) problems.push(`pool lp mint ${pool.lpMint.toBase58()} ≠ Config.satpad_lp_mint`);
     const [baseRes, quoteRes] = await Promise.all([conn.getTokenAccountBalance(pool.poolBaseTokenAccount, "confirmed"), conn.getTokenAccountBalance(pool.poolQuoteTokenAccount, "confirmed")]);
     const out = {
-      rpc: RPC, pool: config.satpadPool.toBase58(), lpMint: pool.lpMint.toBase58(), runsConfirmed: confirmed.length, runsFailed: failed.length, runsIndexed: runs.length,
+      rpc: RPC, pool: config.satpadPool.toBase58(), lpMint: pool.lpMint.toBase58(), runsConfirmed: confirmed.length, runsFailed: failed.length, runsRefusedInSimulation: refused.length, runsIndexed: runs.length,
       drawnSats: drawnLedger.toString(), lpMintedLedger: mintedLedger.toString(), lpBurnedLedger: burnedLedger.toString(), lpMintedIndexed: mintedIdx.toString(), lpBurnedIndexed: burnedIdx.toString(),
       lpMintSupplyOnChain: supply.toString(), poolLpCounter: pool.lpSupply.toString(), poolReserves: { base: baseRes.value.amount, quote: quoteRes.value.amount },
       definitionOfDone: problems.length === 0 && confirmed.length >= minRuns ? "MET" : "NOT MET", problems,

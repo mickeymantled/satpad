@@ -59,7 +59,7 @@ function world(balances: Record<string, bigint | null>, supply: bigint[] = [0n, 
   let calls = 0;
   const chain: ChainReader = {
     tokenBalance: async (a) => balances[a.toBase58()] ?? null, tokenBalances: async (as) => as.map((a) => balances[a.toBase58()] ?? null),
-    vaultConfig: async () => cfg(), slot: async () => 1n, mintSupply: async () => supply[Math.min(calls++, supply.length - 1)]!,
+    vaultConfig: async () => cfg(), slot: async () => 1n, mintSupply: async () => supply[Math.min(calls++, supply.length - 1)]!, unixTime: async () => 1_000_000_000,
   };
   const alerts: string[] = [];
   const sender: TxSender = { send: async (entry, ixs, signers, opts) => { sent.push({ entry, ixs, signers, ...(opts && { opts }) }); return { signature: "sigLP" }; } };
@@ -79,7 +79,7 @@ describe("lpTick", () => {
   });
   it("draws min(pot, lp_draw_max), sends draw_lp + buy + deposit + burn over the table, signed by the LP wallet, with the ledger amounts", async () => {
     const w = world(pot(800_000n));
-    const r = await lpTick(w.deps, cfg({ lastLpDrawTs: 1_000_000_000n - 300n }));
+    const r = await lpTick(w.deps, cfg({ lastLpDrawTs: 1_000_000_000n - 305n }));
     expect(w.sent).toHaveLength(1);
     const { entry, ixs, signers, opts } = w.sent[0]!;
     expect(entry.type).toBe("lp_deposit");

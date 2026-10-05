@@ -17,7 +17,7 @@ const buyIx = new TransactionInstruction({ programId: k(), keys: [], data: Buffe
 
 function deps(balance: bigint | null, over: Partial<BuybackDeps> = {}) {
   const sent: { entry: LedgerEntry; ixs: TransactionInstruction[]; signers: Keypair[] }[] = [];
-  const chain: ChainReader = { tokenBalance: async (a) => (a.equals(wbtcAta) ? balance : null), tokenBalances: async (as) => as.map((a) => (a.equals(wbtcAta) ? balance : null)), vaultConfig: async () => base(), slot: async () => 1n, mintSupply: async () => 0n };
+  const chain: ChainReader = { tokenBalance: async (a) => (a.equals(wbtcAta) ? balance : null), tokenBalances: async (as) => as.map((a) => (a.equals(wbtcAta) ? balance : null)), vaultConfig: async () => base(), slot: async () => 1n, mintSupply: async () => 0n, unixTime: async () => 0 };
   const sender: TxSender = { send: async (entry, ixs, signers) => { sent.push({ entry, ixs, signers }); return { signature: "sigB" }; } };
   const state = { pool: { baseMint: satpadMint } } as unknown as SwapSolanaState;
   const d: BuybackDeps = {
