@@ -35,7 +35,8 @@
     "fork:api-check": "tsx scripts/fork-api-check.ts",
     "web": "pnpm --filter @satpad/web dev",
     "e2e": "pnpm --filter @satpad/web e2e",
-    "vault:set-satpad": "tsx scripts/vault-set-satpad.ts"
+    "vault:set-satpad": "tsx scripts/vault-set-satpad.ts",
+    "bootstrap:satpad": "tsx scripts/bootstrap-satpad.ts"
   },
   "dependencies": {
     "@satpad/sdk": "workspace:*",
