@@ -63,3 +63,8 @@ pnpm db:migrate && pnpm --filter @satpad/db test
 - Settle loop: after graduation the same CoinFee PDA earns PumpSwap creator fees; the loop now collects both vaults (`venue: curve` and `venue: pool` ledger rows) before `settle`. Builder injected (`ammCollect`) so tests stay offline.
 - Buyback-and-burn loop (`loops/buyback.ts`, 300 s): buyback wallet's whole wBTC balance → `buy` on `Config.satpad_pool` → burn of exactly the tokens bought, one transaction; ledger type `buyback` with `{sats, tokens, burned}`. Requires `BUYBACK_WALLET_KEYPAIR` (D22). Skips when paused, below `BUYBACK_MIN_SATS`, or until `set_satpad`.
 - Evidence (M6 fork, `--once`): 3 settles incl. $SATPAD treasury-only (120,537 sats → operator), 1 payout, buyback 2,015 sats → 33,126,834,583 $SATPAD burned (`PkJFt9…`).
+
+## Addendum 2026-10-05 (M6 task 6)
+- LP deposit loop (`loops/lp.ts`): one v0 transaction over the Reserve lookup table (`RESERVE_ALT`, `scripts/create-reserve-alt.ts`): `draw_lp(min(LpPot, lp_draw_max))` → PumpSwap `buy` of half the budget (draw + wallet dust) → `deposit(lpTokens, maxBase, maxQuote)` sized by `planLpRun` at the post-swap reserves → Token-2022 burn of exactly `lpTokens`. Skips: paused, pool not set, on-chain interval not elapsed, draw below `LP_MIN_DRAW_SATS`. Guard: LP mint supply read before/after; an increase alerts and fails the tick. Ledger `lp_deposit` with drawn / satsSwapped / tokensBought / lpMinted / lpBurned / pool reserves before.
+- `Sender.send(..., { tables })` builds a v0 transaction; `ChainReader.mintSupply`.
+- Evidence (M6 fork): `2qPYg3…` drawn 2,021 sats, swapped 1,020, LP 3,803,878 minted and burned, LP mint supply 0 → 0.

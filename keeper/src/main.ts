@@ -14,7 +14,8 @@ import { PgLedger } from "./ledger";
 import { createLogger } from "./log";
 import { settleTick } from "./loops/settle";
 import { buybackTick } from "./loops/buyback";
-import { ammSwapState, buildAmmCollectCreatorFee } from "@satpad/sdk";
+import { ammLiquidityState, ammSwapState, buildAmmCollectCreatorFee } from "@satpad/sdk";
+import { lpTick } from "./loops/lp";
 import { Sender } from "./rpc";
 import { Scheduler, type LoopDef } from "./scheduler";
 
@@ -50,6 +51,19 @@ async function main(): Promise<void> {
       },
     });
   } else log.warn("BUYBACK_WALLET_KEYPAIR not set; buyback loop disabled");
+  if (cfg.lpWalletKeypairPath) {
+    const lpWallet = loadKeypair(cfg.lpWalletKeypairPath);
+    const table = cfg.reserveAlt ? (await conn.getAddressLookupTable(cfg.reserveAlt)).value : null;
+    if (cfg.reserveAlt && !table) throw new Error(`RESERVE_ALT ${cfg.reserveAlt.toBase58()} not found`);
+    if (!table) log.warn("RESERVE_ALT not set; the LP run will only fit if the four instructions stay under 1232 bytes");
+    loops.push({
+      name: "lp", intervalMs: cfg.lpIntervalMs,
+      run: async () => {
+        const r = await lpTick({ chain, sender, lpWallet, minDrawSats: cfg.lpMinDrawSats, slippagePct: cfg.lpSlippagePct, swapState: (p, u) => ammSwapState(conn, p, u), liquidityState: (p, u) => ammLiquidityState(conn, p, u), tables: table ? [table] : [], alerter, log }, await chain.vaultConfig());
+        return { ...(r.skipped && { skipped: r.skipped }), ...(r.plan && { drawn: r.plan.draw.toString(), swapped: r.plan.maxQuoteIn.toString(), lpBurned: r.plan.lpTokens.toString(), signature: r.signature, lpSupply: `${r.lpSupplyBefore}→${r.lpSupplyAfter}` }) };
+      },
+    });
+  } else log.warn("LP_WALLET_KEYPAIR not set; LP deposit loop disabled");
 
   const sched = new Scheduler(loops, {
     log, alerter,

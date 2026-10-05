@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Keypair, SystemProgram, Transaction } from "@solana/web3.js";
+import { AddressLookupTableAccount, Keypair, SystemProgram, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { FixedFeeProvider, bump } from "@satpad/sdk";
 import { MemoryLedger } from "../src/ledger";
 import { Sender, type Rpc } from "../src/rpc";
@@ -12,18 +12,19 @@ const log = createLogger({}, "error", () => {});
 /** Scriptable RPC: `plan` is a list of outcomes per send attempt. */
 function mockRpc(plan: ("ok" | "expire" | "confirmErr")[], simErr: unknown = null) {
   const sent: Transaction[] = [];
+  const sentRaw: Uint8Array[] = [];
   let i = 0;
   const rpc: Rpc = {
     getLatestBlockhash: async () => ({ blockhash: Keypair.generate().publicKey.toBase58(), lastValidBlockHeight: 100 + i }),
     simulateTransaction: (async () => ({ context: { slot: 1 }, value: { err: simErr, logs: simErr ? ["Program log: boom"] : [] } })) as Rpc["simulateTransaction"],
-    sendRawTransaction: async (raw) => { sent.push(Transaction.from(raw)); return `sig${++i}`; },
+    sendRawTransaction: async (raw) => { sentRaw.push(raw as Uint8Array); try { sent.push(Transaction.from(raw)); } catch { /* v0 */ } return `sig${++i}`; },
     confirmTransaction: (async () => {
       const outcome = plan[i - 1] ?? "ok";
       if (outcome === "expire") throw Object.assign(new Error("TransactionExpiredBlockheightExceededError: Signature sig has expired: block height exceeded."), { name: "TransactionExpiredBlockheightExceededError" });
       return { context: { slot: 500 + i }, value: { err: outcome === "confirmErr" ? { InstructionError: [0, "Custom"] } : null } };
     }) as Rpc["confirmTransaction"],
   };
-  return { rpc, sent };
+  return { rpc, sent, sentRaw };
 }
 const priceOf = (tx: Transaction): bigint => {
   const d = tx.instructions[1]!.data; // setComputeUnitPrice: u8 tag(3) + u64 LE
@@ -108,5 +109,20 @@ describe("fee bump", () => {
     expect([1, 2, 3, 4, 5, 6, 7].map((a) => bump(1000n, a))).toEqual([1000n, 1500n, 2250n, 3375n, 5063n, 7594n, 7594n]);
     expect(bump(1000n, 20)).toBe(7594n);
     expect(bump(1000n, 6) <= 8000n).toBe(true);
+  });
+  it("builds a v0 transaction over lookup tables when asked (LP run), signed by every signer", async () => {
+    const { rpc, sentRaw } = mockRpc(["ok"]);
+    const store = new MemoryLedger();
+    const s = new Sender(rpc, new FixedFeeProvider(7n), store, { computeUnitLimit: 200_000, maxAttempts: 2, log });
+    const other = Keypair.generate();
+    const table = new AddressLookupTableAccount({ key: Keypair.generate().publicKey, state: { deactivationSlot: BigInt("18446744073709551615"), lastExtendedSlot: 0, lastExtendedSlotStartIndex: 0, addresses: [other.publicKey, SystemProgram.programId] } });
+    const r = await s.send({ type: "lp_deposit", actor: payer.publicKey.toBase58(), amounts: {} }, [SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: other.publicKey, lamports: 1 })], [payer], { tables: [table] });
+    expect(r.signature).toBe("sig1");
+    const tx = VersionedTransaction.deserialize(sentRaw[0]!);
+    expect(tx.version).toBe(0);
+    expect(tx.message.addressTableLookups).toHaveLength(1);
+    expect(tx.message.compiledInstructions).toHaveLength(3);
+    expect(tx.signatures).toHaveLength(1);
+    expect(store.rows[0]).toMatchObject({ status: "confirmed", type: "lp_deposit" });
   });
 });

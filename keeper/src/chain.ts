@@ -1,6 +1,6 @@
 // Read-side chain access the loops need, as a small interface so tests can script balances without an RPC.
 import { Connection, PublicKey } from "@solana/web3.js";
-import { unpackAccount } from "@solana/spl-token";
+import { getMint, unpackAccount } from "@solana/spl-token";
 import { BTC_QUOTE_TOKEN_PROGRAM, configPda, decodeConfig, type Config } from "@satpad/sdk";
 
 export interface ChainReader {
@@ -8,6 +8,8 @@ export interface ChainReader {
   tokenBalance(ata: PublicKey): Promise<bigint | null>;
   tokenBalances(atas: PublicKey[]): Promise<(bigint | null)[]>;
   vaultConfig(): Promise<Config>;
+  /** Total supply of a mint (LP-supply guard, SPEC "Published addresses"). */
+  mintSupply(mint: PublicKey, tokenProgram: PublicKey): Promise<bigint>;
   slot(): Promise<bigint>;
 }
 
@@ -24,6 +26,9 @@ export class RpcChainReader implements ChainReader {
       infos.forEach((info, j) => out.push(info ? unpackAccount(chunk[j]!, info, BTC_QUOTE_TOKEN_PROGRAM).amount : null));
     }
     return out;
+  }
+  async mintSupply(mint: PublicKey, tokenProgram: PublicKey): Promise<bigint> {
+    return (await getMint(this.conn, mint, "confirmed", tokenProgram)).supply;
   }
   async vaultConfig(): Promise<Config> {
     const info = await this.conn.getAccountInfo(configPda()[0], "confirmed");

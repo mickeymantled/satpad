@@ -27,6 +27,11 @@ export interface KeeperConfig {
   buybackIntervalMs: number;
   buybackMinSats: bigint;
   buybackSlippagePct: number;
+  lpIntervalMs: number;
+  lpMinDrawSats: bigint;
+  lpSlippagePct: number;
+  /** Address of the Reserve lookup table (scripts/create-reserve-alt.ts); required for the LP loop. */
+  reserveAlt?: PublicKey;
   telegramBotToken?: string;
   telegramChatId?: string;
   programId?: PublicKey;
@@ -73,7 +78,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KeeperConfig {
     buybackIntervalMs: int(env, "BUYBACK_INTERVAL_MS", 300_000),
     buybackMinSats: big(env, "BUYBACK_MIN_SATS", 10_000n),
     buybackSlippagePct: int(env, "BUYBACK_SLIPPAGE_PCT", 1),
+    lpIntervalMs: int(env, "LP_INTERVAL_MS", 300_000),
+    lpMinDrawSats: big(env, "LP_MIN_DRAW_SATS", 10_000n),
+    lpSlippagePct: int(env, "LP_SLIPPAGE_PCT", 1),
   };
+  if (env["RESERVE_ALT"]) cfg.reserveAlt = new PublicKey(env["RESERVE_ALT"]);
   if (env["LP_WALLET_KEYPAIR"]) cfg.lpWalletKeypairPath = env["LP_WALLET_KEYPAIR"];
   if (env["BUYBACK_WALLET_KEYPAIR"]) cfg.buybackWalletKeypairPath = env["BUYBACK_WALLET_KEYPAIR"];
   if (env["REWARDS_WALLET_KEYPAIR"]) cfg.rewardsWalletKeypairPath = env["REWARDS_WALLET_KEYPAIR"];

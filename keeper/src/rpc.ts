@@ -1,6 +1,6 @@
 // Transaction sending with the SPEC rules: simulate first, priority fee from the provider, retry with a bumped fee on
 // blockhash expiry up to maxAttempts (≤ 5), and a ledger row written before send and after confirmation.
-import { ComputeBudgetProgram, Connection, Keypair, Transaction, TransactionInstruction, type SendOptions } from "@solana/web3.js";
+import { AddressLookupTableAccount, ComputeBudgetProgram, Connection, Keypair, Transaction, TransactionInstruction, TransactionMessage, VersionedTransaction, type SendOptions } from "@solana/web3.js";
 import type { PriorityFeeProvider } from "@satpad/sdk";
 import type { LedgerEntry, LedgerStore } from "./ledger";
 import type { Logger } from "./log";
@@ -15,6 +15,8 @@ export class SendError extends Error {
 }
 
 export interface SendResult { signature: string; slot: bigint; attempts: number; ledgerId: bigint }
+/** `tables`: build a v0 transaction over these lookup tables (the LP run's draw + swap + deposit + burn does not fit legacy). */
+export interface SendTxOptions { tables?: AddressLookupTableAccount[] }
 
 const EXPIRED = /block ?height exceeded|blockhash not found|expired|TransactionExpiredBlockheightExceededError/i;
 /** The exact same bytes were processed already (arg-less instruction + repeated blockhash): rebuild with a new blockhash. */
@@ -27,7 +29,7 @@ export class Sender {
    * Builds, simulates, sends and confirms. Simulation failures are not retried (the state is wrong, not the network);
    * blockhash expiry is retried with a bumped priority fee. Every outcome is in the ledger.
    */
-  async send(entry: LedgerEntry, ixs: TransactionInstruction[], signers: Keypair[]): Promise<SendResult> {
+  async send(entry: LedgerEntry, ixs: TransactionInstruction[], signers: Keypair[], txOpts: SendTxOptions = {}): Promise<SendResult> {
     if (signers.length === 0) throw new Error("no signers");
     const id = await this.store.begin(entry);
     const log = this.opts.log.child({ ledgerId: id, type: entry.type, mint: entry.mint });
@@ -35,10 +37,11 @@ export class Sender {
     let lastBlockhash: string | null = null;
     for (let attempt = 1; attempt <= this.opts.maxAttempts; attempt++) {
       try {
-        const tx = new Transaction();
-        const fee = await this.fees.estimate(tx, attempt);
-        tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: this.opts.computeUnitLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Number(fee) }), ...ixs);
-        tx.feePayer = signers[0]!.publicKey;
+        const legacy = new Transaction();
+        const fee = await this.fees.estimate(legacy, attempt);
+        const all = [ComputeBudgetProgram.setComputeUnitLimit({ units: this.opts.computeUnitLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: Number(fee) }), ...ixs];
+        legacy.add(...all);
+        legacy.feePayer = signers[0]!.publicKey;
         let { blockhash, lastValidBlockHeight } = await this.rpc.getLatestBlockhash("confirmed");
         // After an AlreadyProcessed, the same blockhash would reproduce the same signature: wait for a new one.
         for (let i = 0; lastBlockhash !== null && blockhash === lastBlockhash && i < 20; i++) {
@@ -46,10 +49,18 @@ export class Sender {
           ({ blockhash, lastValidBlockHeight } = await this.rpc.getLatestBlockhash("confirmed"));
         }
         lastBlockhash = blockhash;
-        tx.recentBlockhash = blockhash;
-        tx.sign(...signers);
+        let tx: Transaction | VersionedTransaction;
+        if (txOpts.tables?.length) {
+          const v0 = new VersionedTransaction(new TransactionMessage({ payerKey: signers[0]!.publicKey, recentBlockhash: blockhash, instructions: all }).compileToV0Message(txOpts.tables));
+          v0.sign(signers);
+          tx = v0;
+        } else {
+          legacy.recentBlockhash = blockhash;
+          legacy.sign(...signers);
+          tx = legacy;
+        }
         if (attempt === 1 || lastErr instanceof SendError && lastErr.retryable && ALREADY.test(lastErr.message)) {
-          const sim = await this.rpc.simulateTransaction(tx);
+          const sim = tx instanceof VersionedTransaction ? await this.rpc.simulateTransaction(tx) : await this.rpc.simulateTransaction(tx);
           if (sim.value.err) {
             const msg = JSON.stringify(sim.value.err);
             throw new SendError(`simulation failed: ${msg}`, sim.value.logs ?? [], ALREADY.test(msg));

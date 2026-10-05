@@ -2,7 +2,7 @@
 // fees above the dust threshold: pump.fun collect_creator_fee_v2 → satpad_vault::settle → pay_payee when the payee
 // has a quote ATA. Per-coin isolation: one coin failing never blocks the others. Idempotent: every step re-reads
 // balances, so a crash between steps just means the next tick finishes the job.
-import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { AddressLookupTableAccount, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { ammCreatorVaultPda } from "@pump-fun/pump-sdk";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, buildCollectCreatorFeeV2, buildPayPayee, buildSettle, coinAccounts, coinFeePda, payeePotPda, splitFee, type Config } from "@satpad/sdk";
@@ -12,7 +12,7 @@ import type { Logger } from "../log";
 import type { RegisteredCoin } from "../coins";
 
 /** The slice of `Sender` the loop uses; a recording fake in tests. */
-export interface TxSender { send(entry: LedgerEntry, ixs: TransactionInstruction[], signers: Keypair[]): Promise<{ signature: string }> }
+export interface TxSender { send(entry: LedgerEntry, ixs: TransactionInstruction[], signers: Keypair[], opts?: { tables?: AddressLookupTableAccount[] }): Promise<{ signature: string }> }
 
 export interface SettleDeps {
   chain: ChainReader;

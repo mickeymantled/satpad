@@ -24,7 +24,7 @@ function world(balances: Map<string, bigint | null>, failOn: string[] = []) {
   const sent: { entry: LedgerEntry; ixs: TransactionInstruction[] }[] = [];
   const get = (a: PublicKey) => balances.has(a.toBase58()) ? balances.get(a.toBase58())! : null;
   const chain: ChainReader = {
-    tokenBalance: async (a) => get(a), tokenBalances: async (as) => as.map(get), vaultConfig: async () => config, slot: async () => 1n,
+    tokenBalance: async (a) => get(a), tokenBalances: async (as) => as.map(get), vaultConfig: async () => config, slot: async () => 1n, mintSupply: async () => 0n,
   };
   const sender: TxSender = {
     send: async (entry, ixs) => {
