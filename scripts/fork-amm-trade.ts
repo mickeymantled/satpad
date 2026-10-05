@@ -1,7 +1,7 @@
 // M6 task 2 evidence (VERIFIED V18): trade on a graduated coin's PumpSwap pool through the SDK wrappers — buy, sell,
 // two-sided deposit with the minted LP burned in the same transaction (LP mint supply net zero), and
 // collect_coin_creator_fee into the CoinFee PDA's wBTC ATA. Prototype of the keeper's LP and collect legs.
-// Usage: LOCAL_RPC_URL=http://127.0.0.1:8999 FORK_KEYS_DIR=scripts/fork-keys-m6 npx tsx scripts/fork-amm-trade.ts [--mint <mint>] [--dry-run]
+// Usage: LOCAL_RPC_URL=http://127.0.0.1:8999 FORK_KEYS_DIR=scripts/fork-keys-m6 npx tsx scripts/fork-amm-trade.ts [--mint <mint>] [--dry-run] [--no-collect]
 import { readFileSync } from "node:fs";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { createBurnInstruction, getAccount, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
@@ -57,7 +57,9 @@ async function main() {
   if (supplyAfter !== supplyBefore) throw new Error(`LP supply changed: ${supplyBefore} → ${supplyAfter}`);
   if (lpLeft !== 0n) throw new Error(`LP tokens left in wallet: ${lpLeft}`);
 
-  // Creator fees from the buy/sell sit in the AMM creator vault of CoinFee; collect them into CoinFee's wBTC ATA.
+  // Creator fees from the buy/sell sit in the AMM creator vault of CoinFee; collect them into CoinFee's wBTC ATA
+  // (--no-collect leaves them for the keeper's settle loop to collect).
+  if (process.argv.includes("--no-collect")) { console.log(JSON.stringify(out, null, 2)); return; }
   const feeBefore = await bal(coinFee, BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM);
   out["collectSig"] = await send(conn, await buildAmmCollectCreatorFee(conn, coinFee, payer.publicKey), [payer], [], 200_000);
   out["creatorFeeCollectedSats"] = ((await bal(coinFee, BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM)) - feeBefore).toString();

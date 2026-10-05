@@ -50,6 +50,31 @@ const seed = (c: RegisteredCoin, unclaimed: bigint, waiting: bigint | null = 0n,
 };
 
 describe("settleTick", () => {
+  it("graduated coin: collects the PumpSwap creator vault too (venue pool) and settles the sum", async () => {
+    const c = coin();
+    const m = seed(c, 10_000n);
+    const [cf] = coinFeePda(c.mint);
+    m.set(ata(ammCreatorVaultPda(cf)).toBase58(), 5_000n);
+    const w = world(m);
+    // the fake sender only models the curve vault; model the AMM vault move here
+    const origSend = w.sender.send.bind(w.sender);
+    w.sender.send = async (entry, ixs, signers) => { const r = await origSend(entry, ixs, signers); if (entry.amounts["venue"] === "pool") { const a = coinAccounts(c.mint, cf); m.set(a.creatorQuoteAta.toBase58(), (m.get(a.creatorQuoteAta.toBase58()) ?? 0n) + 5_000n); m.set(ata(ammCreatorVaultPda(cf)).toBase58(), 0n); } return r; };
+    const collectIx = new TransactionInstruction({ programId: k(), keys: [], data: Buffer.alloc(0) });
+    const s = await settleTick({ ...deps(w), ammCollect: async () => [collectIx] }, config, [c]);
+    expect(w.sent.map((x) => `${x.entry.type}:${x.entry.amounts["venue"] ?? ""}`)).toEqual(["collect_creator_fee:curve", "collect_creator_fee:pool", "settle:", "pay_payee:"]);
+    expect(w.sent[1]!.ixs).toEqual([collectIx]);
+    expect(w.sent[2]!.entry.amounts["fee"]).toBe("15000");
+    expect(s.outcomes[0]!.collected).toBe(15_000n);
+  });
+  it("graduated coin without an AMM collect builder: warns and settles only the curve part", async () => {
+    const c = coin();
+    const m = seed(c, 10_000n);
+    m.set(ata(ammCreatorVaultPda(coinFeePda(c.mint)[0])).toBase58(), 5_000n);
+    const w = world(m);
+    const s = await settleTick(deps(w), config, [c]);
+    expect(w.sent.map((x) => x.entry.type)).toEqual(["collect_creator_fee", "settle", "pay_payee"]);
+    expect(s.outcomes[0]!.collected).toBe(10_000n);
+  });
   it("collects, settles with the split in the ledger, and pays a payee who has an ATA", async () => {
     const c = coin();
     const w = world(seed(c, 10_000n));

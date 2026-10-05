@@ -8,6 +8,8 @@ export interface KeeperConfig {
   instance: string;
   keeperKeypairPath: string;
   lpWalletKeypairPath?: string;
+  /** D22: hot key owning the buyback wallet's wBTC; the buyback loop runs only when set. */
+  buybackWalletKeypairPath?: string;
   rewardsWalletKeypairPath?: string;
   /** Skip claim+settle when a coin's unclaimed creator fee is below this (base units). */
   settleDustThreshold: bigint;
@@ -22,6 +24,9 @@ export interface KeeperConfig {
   computeUnitLimit: number;
   maxSendAttempts: number;
   healthPort: number;
+  buybackIntervalMs: number;
+  buybackMinSats: bigint;
+  buybackSlippagePct: number;
   telegramBotToken?: string;
   telegramChatId?: string;
   programId?: PublicKey;
@@ -65,8 +70,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KeeperConfig {
     computeUnitLimit: int(env, "COMPUTE_UNIT_LIMIT", 400_000),
     maxSendAttempts: attempts,
     healthPort: int(env, "HEALTH_PORT", 8080),
+    buybackIntervalMs: int(env, "BUYBACK_INTERVAL_MS", 300_000),
+    buybackMinSats: big(env, "BUYBACK_MIN_SATS", 10_000n),
+    buybackSlippagePct: int(env, "BUYBACK_SLIPPAGE_PCT", 1),
   };
   if (env["LP_WALLET_KEYPAIR"]) cfg.lpWalletKeypairPath = env["LP_WALLET_KEYPAIR"];
+  if (env["BUYBACK_WALLET_KEYPAIR"]) cfg.buybackWalletKeypairPath = env["BUYBACK_WALLET_KEYPAIR"];
   if (env["REWARDS_WALLET_KEYPAIR"]) cfg.rewardsWalletKeypairPath = env["REWARDS_WALLET_KEYPAIR"];
   if (env["TELEGRAM_BOT_TOKEN"]) cfg.telegramBotToken = env["TELEGRAM_BOT_TOKEN"];
   if (env["TELEGRAM_CHAT_ID"]) cfg.telegramChatId = env["TELEGRAM_CHAT_ID"];

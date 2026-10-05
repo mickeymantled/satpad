@@ -107,3 +107,8 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 ## D21 — 2026-10-04 — M6 — `set_satpad`: admin-only, write-once pool registration
 **Decision (human):** add `set_satpad(satpad_mint, satpad_pool, satpad_lp_mint)` to `satpad_vault`, admin-only and write-once: it refuses if any of the three Config fields is already set, emits a `SatpadSet` event, gets its own LiteSVM tests and a line in `docs/AUDIT_SCOPE.md`. Changing the pool afterwards requires a program upgrade — by design. `@pump-fun/pump-swap-sdk@1.20.0` approved for `packages/sdk`.
 **Status:** approved by human 2026-10-04; implementation in M6 task 3.
+
+## D22 — 2026-10-05 — M6 — The buyback wallet is a keeper hot key
+**Finding:** SPEC's buyback loop "swaps the buyback wallet's BTC balance for $SATPAD on the pool and burns it", but the keeper's key table lists three hot keys (keeper, LP, rewards). The swap must be signed by the wallet that owns the BTC, so the keeper holds the buyback wallet's key as a fourth hot key (`BUYBACK_WALLET_KEYPAIR`). Blast radius: a stolen key can at most buy and burn (or, with a modified keeper, keep) one interval's worth of settled buyback share — `settle` keeps sending the 25% share there, and the admin can repoint `buyback_wallet` via `set_wallets`.
+**Decision:** proposed. Alternative for later: a vault-owned `BuybackPot` plus a `buyback` instruction that CPIs the PumpSwap buy and burns in-program, so no hot key holds BTC.
+**Status:** proposed; implemented as a keeper hot key in M6 task 5.

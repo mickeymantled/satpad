@@ -20,6 +20,8 @@ export interface SettleDeps {
   keeper: Keypair;
   dustThreshold: bigint;
   log: Logger;
+  /** M6: PumpSwap `collect_coin_creator_fee` for a graduated coin's CoinFee (`buildAmmCollectCreatorFee` in production). */
+  ammCollect?: (coinCreator: PublicKey) => Promise<TransactionInstruction[]>;
 }
 
 export interface CoinOutcome { mint: string; collected?: bigint; settled?: bigint; paid?: bigint; skipped?: string; error?: string }
@@ -61,16 +63,23 @@ async function settleOne(deps: SettleDeps, config: Config, coin: RegisteredCoin,
 
   const bal = await deps.chain.tokenBalances([accts.creatorVaultQuoteAta, accts.creatorQuoteAta, ammVaultAta]);
   const unclaimed = bal[0] ?? null, waiting = bal[1] ?? null, ammUnclaimed = bal[2] ?? null;
-  if (ammUnclaimed && ammUnclaimed > 0n) log.warn("graduated coin has PumpSwap creator fees waiting; AMM collect arrives in M6", { ammUnclaimed });
   if (waiting === null) throw new Error("CoinFee ATA missing — coin not declared through satpad_vault?");
 
-  // 1. claim: pump's permissionless collect into the CoinFee ATA
+  // 1. claim: pump's permissionless collect into the CoinFee ATA — the curve's vault, and after graduation the
+  // PumpSwap creator vault of the same CoinFee (SPEC "Graduation": fees keep flowing to the same PDA)
   let collected = 0n;
   if (unclaimed !== null && unclaimed >= deps.dustThreshold) {
-    await deps.sender.send({ type: "collect_creator_fee", mint: out.mint, actor, amounts: { unclaimed: unclaimed.toString() } }, [await buildCollectCreatorFeeV2(coinFee)], [deps.keeper]);
-    collected = unclaimed;
-    out.collected = collected;
+    await deps.sender.send({ type: "collect_creator_fee", mint: out.mint, actor, amounts: { unclaimed: unclaimed.toString(), venue: "curve" } }, [await buildCollectCreatorFeeV2(coinFee)], [deps.keeper]);
+    collected += unclaimed;
   }
+  if (ammUnclaimed !== null && ammUnclaimed >= deps.dustThreshold) {
+    if (!deps.ammCollect) log.warn("graduated coin has PumpSwap creator fees waiting but no AMM collect builder is configured", { ammUnclaimed });
+    else {
+      await deps.sender.send({ type: "collect_creator_fee", mint: out.mint, actor, amounts: { unclaimed: ammUnclaimed.toString(), venue: "pool" } }, await deps.ammCollect(coinFee), [deps.keeper]);
+      collected += ammUnclaimed;
+    }
+  }
+  if (collected > 0n) out.collected = collected;
 
   // 2. settle whatever sits in the CoinFee ATA (re-read: never trust arithmetic over a prior read)
   const toSettle = collected > 0n ? (await deps.chain.tokenBalance(accts.creatorQuoteAta)) ?? 0n : waiting;

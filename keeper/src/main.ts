@@ -13,6 +13,8 @@ import { loadKeypair } from "./keys";
 import { PgLedger } from "./ledger";
 import { createLogger } from "./log";
 import { settleTick } from "./loops/settle";
+import { buybackTick } from "./loops/buyback";
+import { ammSwapState, buildAmmCollectCreatorFee } from "@satpad/sdk";
 import { Sender } from "./rpc";
 import { Scheduler, type LoopDef } from "./scheduler";
 
@@ -33,11 +35,21 @@ async function main(): Promise<void> {
     run: async () => {
       const [config, coins, slot] = await Promise.all([chain.vaultConfig(), discoverCoins(conn), chain.slot()]);
       await upsertCoins(db, coins, slot);
-      const s = await settleTick({ chain, sender, keeper, dustThreshold: cfg.settleDustThreshold, log }, config, coins);
+      const s = await settleTick({ chain, sender, keeper, dustThreshold: cfg.settleDustThreshold, log, ammCollect: (coinCreator) => buildAmmCollectCreatorFee(conn, coinCreator, keeper.publicKey) }, config, coins);
       if (s.failed > 0) log.warn("tick had failing coins", { failed: s.failed, outcomes: s.outcomes.filter((o) => o.error) });
       return { coins: s.coins, collected: s.collected, settled: s.settled, paid: s.paid, failed: s.failed };
     },
   }];
+  if (cfg.buybackWalletKeypairPath) {
+    const buybackWallet = loadKeypair(cfg.buybackWalletKeypairPath);
+    loops.push({
+      name: "buyback", intervalMs: cfg.buybackIntervalMs,
+      run: async () => {
+        const r = await buybackTick({ chain, sender, buybackWallet, minSats: cfg.buybackMinSats, slippagePct: cfg.buybackSlippagePct, swapState: (pool, user) => ammSwapState(conn, pool, user), log }, await chain.vaultConfig());
+        return { ...(r.skipped && { skipped: r.skipped }), ...(r.sats !== undefined && { sats: r.sats.toString(), tokens: r.tokens?.toString(), signature: r.signature }) };
+      },
+    });
+  } else log.warn("BUYBACK_WALLET_KEYPAIR not set; buyback loop disabled");
 
   const sched = new Scheduler(loops, {
     log, alerter,

@@ -12,6 +12,8 @@ import {
 } from "@pump-fun/pump-swap-sdk";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM } from "./quoteMints";
 
+export type { LiquiditySolanaState, Pool, SwapSolanaState } from "@pump-fun/pump-swap-sdk";
+
 const bn = (v: bigint) => new BN(v.toString());
 const big = (v: BN) => BigInt(v.toString());
 
