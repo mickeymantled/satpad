@@ -84,10 +84,13 @@ test("a launch at the size limit splits the first buy into a second transaction"
   await expect(page.getByTestId("tx-confirm")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId("launch-plan")).toHaveAttribute("data-mode", /split|single-no-fee/);
   const mode = await page.getByTestId("launch-plan").getAttribute("data-mode");
+  // D20 condition: the preview itself must say what this transaction is — atomic launch, buy as a second transaction.
+  await expect(page.getByTestId("tx-note")).toContainText(mode === "split" ? /SECOND transaction/ : /one atomic transaction/);
   await page.getByTestId("tx-confirm").click();
   if (mode === "split") {
     await expect(page.getByTestId("launch-done")).toBeVisible({ timeout: 90_000 });
     await expect(page.getByTestId("tx-preview")).toContainText("First buy", { timeout: 60_000 }); // second preview
+    await expect(page.getByTestId("tx-note")).toContainText("Second transaction");
     await expect(page.getByTestId("tx-preview").locator("li")).toHaveCount(4); // CU limit, CU price, coin ATA, buy_v2
     await page.getByTestId("tx-confirm").click();
   }

@@ -14,6 +14,13 @@ import { useTx } from "@/lib/useTx";
 import { SwapPanel } from "./SwapPanel";
 import { TxPreviewModal } from "./TxPreviewModal";
 
+/** D20 (human condition): say plainly what each transaction is; never split silently. Shown in the form and in the preview modal. */
+const PLAN_NOTES: Record<LaunchPlan["mode"], string | undefined> = {
+  single: undefined,
+  "single-no-fee": "This launch (create, launch fee, declare, first buy) is one atomic transaction. It is at the size limit, so it runs without a priority fee.",
+  split: "This transaction creates the coin, pays the launch fee and registers it — all or nothing. It is at the size limit, so your first buy will follow as a SECOND transaction right after this one confirms; you will be asked to sign again.",
+};
+
 function sol(lamports: bigint): string { const s = lamports.toString().padStart(10, "0"); return `${s.slice(0, -9)}.${s.slice(-9).replace(/0+$/, "") || "0"} SOL`; }
 type PayeeKind = "me" | "wallet" | "holders";
 
@@ -67,10 +74,11 @@ export function LaunchForm() {
       const planned = planLaunch(tx.publicKey, createAndDeclare, firstBuy, [ctx.table]);
       setPlan(planned.mode);
       setPhase("sending");
-      const res = await tx.send(`Launch ${f.symbol.trim()}`, planned.launch, [ctx.table], [mintKp], { noPriorityFee: planned.mode === "single-no-fee" });
+      const sym = f.symbol.trim();
+      const res = await tx.send(`Launch ${sym}`, planned.launch, [ctx.table], [mintKp], { noPriorityFee: planned.mode === "single-no-fee", note: PLAN_NOTES[planned.mode] });
       const mint = mintKp.publicKey.toBase58();
       setLaunched({ mint, signature: res.signature });
-      if (planned.firstBuy.length) await tx.send(`First buy ${f.symbol.trim()}`, planned.firstBuy, [ctx.table]);
+      if (planned.firstBuy.length) await tx.send(`First buy ${sym}`, planned.firstBuy, [ctx.table], undefined, { note: `Second transaction: the first buy of ${sym}. The launch is already confirmed on chain; cancelling here only skips the buy.` });
       setPhase("indexing");
       for (let i = 0; i < 90; i++) { // wait for the indexer, then open the coin page
         if (await api.coin(mint, { cache: "no-store" }).then(() => true).catch(() => false)) { router.push(`/coin/${mint}`); return; }
@@ -83,7 +91,7 @@ export function LaunchForm() {
   const busy = phase !== "" || Boolean(tx.status && tx.status !== "confirmed");
   return (
     <div className="card p-5 space-y-4 max-w-2xl" data-testid="launch-form">
-      {tx.preview && <TxPreviewModal preview={tx.preview.p} title={tx.preview.title} onConfirm={() => tx.preview?.resolve(true)} onCancel={() => tx.preview?.resolve(false)} />}
+      {tx.preview && <TxPreviewModal preview={tx.preview.p} title={tx.preview.title} {...(tx.preview.note && { note: tx.preview.note })} onConfirm={() => tx.preview?.resolve(true)} onCancel={() => tx.preview?.resolve(false)} />}
       {ctxErr && <div className="text-xs" style={{ color: "var(--red)" }}>{ctxErr}</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="space-y-1 text-sm"><span>Name <span style={{ color: "var(--muted)" }}>(≤ 32 bytes)</span></span><input className="input w-full" value={f.name} onChange={set("name")} maxLength={32} data-testid="launch-name" /></label>
@@ -113,7 +121,7 @@ export function LaunchForm() {
       {ctx && <div className="text-xs num" style={{ color: "var(--muted)" }}>Launch fee {sol(ctx.launchFeeLamports)} to the treasury · creator fee {ctx.creatorFeeBps / 100}% in BTC · metadata via {ctx.metadataBackend === "pump" ? "pump.fun IPFS" : "satpad"}</div>}
       {(err || tx.error) && <div className="text-xs" style={{ color: "var(--red)" }} data-testid="tx-error">{err || tx.error}{tx.logs.length > 0 && <pre className="whitespace-pre-wrap text-[10px]" data-testid="tx-logs">{tx.logs.filter((l) => l.includes("Program log") || l.includes("failed")).slice(-12).join("\n")}</pre>}</div>}
       {(phase || tx.status) && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="tx-status">{phase === "indexing" ? "launched — waiting for the indexer" : phase === "uploading" ? "uploading metadata" : tx.status}</div>}
-      {plan && plan !== "single" && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="launch-plan" data-mode={plan}>{plan === "single-no-fee" ? "At the size limit: this launch runs without a priority fee." : "At the size limit: the first buy follows as a second transaction right after the launch confirms."}</div>}
+      {plan && plan !== "single" && <div className="text-xs" style={{ color: "var(--muted)" }} data-testid="launch-plan" data-mode={plan}>{PLAN_NOTES[plan]}</div>}
       {launched && <div className="text-xs num" data-testid="launch-done" data-mint={launched.mint} data-signature={launched.signature}>Mint {launched.mint}</div>}
       <button className="btn btn-accent w-full" disabled={!tx.connected || !ctx || busy} onClick={submit} data-testid="launch-submit">{tx.connected ? "Simulate and launch" : "Connect a wallet to launch"}</button>
     </div>

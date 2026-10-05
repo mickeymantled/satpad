@@ -11,7 +11,10 @@ async function main() {
   await live.start();
   // PRICE_SOURCE=pyth reads the on-chain feed (V7); anything else is a fixed dev price for the fork.
   const fixedCents = BigInt(process.env["BTC_USD_CENTS"] ?? "10000000"); // $100,000.00 default on the fork
-  const inner = process.env["PRICE_SOURCE"] === "pyth" ? new PythPriceProvider(new Connection(process.env["SOLANA_RPC_URL"] ?? "", "confirmed")) : new FixedPriceProvider(fixedCents);
+  // PRICE_MAX_AGE_SECS: staleness guard (default 300 s). On the fork the cloned feed is frozen at clone time, so set a
+  // large value there (M3 close-out); never relax it on mainnet.
+  const maxAge = Number(process.env["PRICE_MAX_AGE_SECS"] ?? 300);
+  const inner = process.env["PRICE_SOURCE"] === "pyth" ? new PythPriceProvider(new Connection(process.env["SOLANA_RPC_URL"] ?? "", "confirmed"), maxAge) : new FixedPriceProvider(fixedCents);
   const prices = new CachedPriceProvider(inner, Number(process.env["PRICE_CACHE_MS"] ?? 30_000));
   const corsOrigins = (process.env["CORS_ORIGINS"] ?? "*").split(",").map((s) => s.trim()).filter(Boolean);
   const rpc = new Connection(process.env["SOLANA_RPC_URL"] ?? "http://127.0.0.1:8899", "confirmed");

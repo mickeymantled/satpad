@@ -2,11 +2,12 @@
 import type { Preview } from "@/lib/tx";
 
 /** SPEC: "Simulates the full transaction and shows every instruction before the wallet prompt." */
-export function TxPreviewModal({ preview, title, onConfirm, onCancel }: { preview: Preview; title: string; onConfirm: () => void; onCancel: () => void }) {
+export function TxPreviewModal({ preview, title, note, onConfirm, onCancel }: { preview: Preview; title: string; /** D20: plain-language statement of what this transaction is and is not (e.g. a split first buy). */ note?: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.6)" }} data-testid="tx-preview">
       <div className="card w-full max-w-lg p-5 space-y-4">
         <h3 className="font-semibold">{title}</h3>
+        {note && <p className="text-sm" style={{ color: "var(--accent)" }} data-testid="tx-note">{note}</p>}
         <ol className="space-y-1 text-sm">
           {preview.instructions.map((i, n) => (
             <li key={n} className="flex gap-2"><span className="num w-5" style={{ color: "var(--muted)" }}>{n + 1}.</span><span className="font-medium">{i.program}</span><span style={{ color: "var(--muted)" }}>{i.summary} · {i.accounts} accounts</span></li>
