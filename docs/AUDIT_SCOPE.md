@@ -15,5 +15,9 @@ Living document for the M10 audit engagement. Everything the auditors must look 
 4. Residual admin risk (SPEC "Known residual risk"): a stolen admin key can repoint `rewards_wallet` and drain rewards pots one run per coin per hour.
 5. Anchor 1.x duplicate-mutable-account check: `settle`/`recover` refuse when two destination wallets share an ATA — operationally the wallets must be distinct.
 
+6. `set_satpad` (D21, M6): admin-only and write-once — refuses once any of `satpad_mint`/`satpad_pool`/`satpad_lp_mint` is set, rejects default or duplicate keys, emits `SatpadSet`. The keeper's LP and buyback loops trust these three addresses; changing them after bootstrap requires a program upgrade by the Squads authority, which is the intended control.
+
+7. **Stack frame estimate on `Settle::try_accounts`** (observed 2026-10-05, platform-tools v1.57, SBPF v2): `cargo-build-sbf` reports "overflows the maximum allowed frame space … offset 704 bytes greater than the maximum of 4096; estimated frame 4800 bytes". The instruction is unchanged since M2 and every `settle` test (LiteSVM) and fork settle (M3 soak) passes, so it is most likely Anchor's conservative estimate for a large `#[derive(Accounts)]` struct, but it must be confirmed (box the largest accounts in `Settle` if real). Not yet established whether earlier builds printed it; CI's container output does not show linker diagnostics.
+
 ## Out of scope
 pump.fun / PumpSwap programs (external, unmodified), NEAR Intents bridge (client-side only), keeper/indexer/web services (separate review).

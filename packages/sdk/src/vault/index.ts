@@ -159,6 +159,10 @@ export function buildSetSplit(admin: PublicKey, s: FeeSplitBps): Promise<Transac
 export function buildSetWallets(admin: PublicKey, w: { treasury?: PublicKey; buybackWallet?: PublicKey; rewardsWallet?: PublicKey }): Promise<TransactionInstruction> {
   return program.methods["setWallets"]!(w.treasury ?? null, w.buybackWallet ?? null, w.rewardsWallet ?? null).accounts(adminAccounts(admin)).instruction();
 }
+/** D21: admin-only, write-once registration of the $SATPAD mint, PumpSwap pool and LP mint. */
+export function buildSetSatpad(admin: PublicKey, s: { satpadMint: PublicKey; satpadPool: PublicKey; satpadLpMint: PublicKey }): Promise<TransactionInstruction> {
+  return program.methods["setSatpad"]!(s.satpadMint, s.satpadPool, s.satpadLpMint).accounts(adminAccounts(admin)).instruction();
+}
 export function buildSetPause(admin: PublicKey, paused: boolean): Promise<TransactionInstruction> {
   return program.methods["setPause"]!(paused).accounts(adminAccounts(admin)).instruction();
 }

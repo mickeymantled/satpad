@@ -109,3 +109,11 @@ pub struct LpParamsSet {
     pub lp_draw_max: u64,
     pub lp_draw_interval: i64,
 }
+
+/// `set_satpad` (D21): the $SATPAD mint, PumpSwap pool and LP mint were recorded, once.
+#[event]
+pub struct SatpadSet {
+    pub satpad_mint: Pubkey,
+    pub satpad_pool: Pubkey,
+    pub satpad_lp_mint: Pubkey,
+}

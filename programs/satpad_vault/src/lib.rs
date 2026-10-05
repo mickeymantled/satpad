@@ -74,6 +74,12 @@ pub mod satpad_vault {
         instructions::admin::handle_set_wallets(ctx, treasury, buyback_wallet, rewards_wallet)
     }
 
+    /// Records the $SATPAD mint, its PumpSwap pool and LP mint once bootstrapped (DECISIONS D21). Admin-only and
+    /// write-once: refuses when any of the three is already set; changing them afterwards requires an upgrade.
+    pub fn set_satpad(ctx: Context<AdminConfig>, satpad_mint: Pubkey, satpad_pool: Pubkey, satpad_lp_mint: Pubkey) -> Result<()> {
+        instructions::admin::handle_set_satpad(ctx, satpad_mint, satpad_pool, satpad_lp_mint)
+    }
+
     /// Pauses or unpauses every coin's `settle`.
     pub fn set_pause(ctx: Context<AdminConfig>, paused: bool) -> Result<()> {
         instructions::admin::handle_set_pause(ctx, paused)

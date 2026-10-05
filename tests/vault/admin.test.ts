@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
-import { SATPAD_VAULT_PROGRAM_ID, coinFeePda, coinPda, configPda, lpPotPda } from "@satpad/sdk";
+import { SATPAD_VAULT_PROGRAM_ID, coinFeePda, coinPda, configPda, lpPotPda, parseVaultEvents } from "@satpad/sdk";
 import { VaultSvm } from "./harness";
 import { ataOf, createAta, declaredCoin, initialized, mintTo, settleIx, wallets, type Wallets } from "./fixtures";
 
@@ -72,6 +72,31 @@ describe("admin instructions", () => {
     it("refuses the default pubkey and non-admin signers", async () => {
       v.expectFail([await walletsIx(PublicKey.default, null, null)], [w.admin], "InvalidWallet");
       v.expectFail([await walletsIx(Keypair.generate().publicKey, null, null, w.lp.publicKey)], [w.lp], "NotAdmin");
+    });
+  });
+
+  describe("set_satpad (D21: admin-only, write-once)", () => {
+    const satpadIx = (m: PublicKey, p: PublicKey, l: PublicKey, signer?: PublicKey) => v.program.methods["setSatpad"]!(m, p, l).accounts({ admin: signer ?? w.admin.publicKey, config: configPda()[0] }).instruction();
+    it("records mint, pool and LP mint once and emits SatpadSet; a second call is refused", async () => {
+      const m = Keypair.generate().publicKey, p = Keypair.generate().publicKey, l = Keypair.generate().publicKey;
+      expect((config()["satpad_pool"] as PublicKey).equals(PublicKey.default)).toBe(true);
+      const logs = v.send([await satpadIx(m, p, l)], [w.admin]).logs();
+      const c = config();
+      expect((c["satpad_mint"] as PublicKey).equals(m)).toBe(true);
+      expect((c["satpad_pool"] as PublicKey).equals(p)).toBe(true);
+      expect((c["satpad_lp_mint"] as PublicKey).equals(l)).toBe(true);
+      const ev = parseVaultEvents(logs).find((e) => e.name === "SatpadSet");
+      expect(ev).toBeDefined();
+      expect((ev!.data["satpad_pool"] as PublicKey).equals(p)).toBe(true);
+      v.expectFail([await satpadIx(Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey)], [w.admin], "SatpadAlreadySet");
+      expect((config()["satpad_pool"] as PublicKey).equals(p)).toBe(true); // unchanged
+    });
+    it("refuses default or duplicate keys and non-admin signers", async () => {
+      const k = Keypair.generate().publicKey;
+      v.expectFail([await satpadIx(PublicKey.default, k, Keypair.generate().publicKey)], [w.admin], "InvalidWallet");
+      v.expectFail([await satpadIx(k, k, Keypair.generate().publicKey)], [w.admin], "InvalidWallet");
+      v.expectFail([await satpadIx(k, Keypair.generate().publicKey, Keypair.generate().publicKey, w.lp.publicKey)], [w.lp], "NotAdmin");
+      expect((config()["satpad_pool"] as PublicKey).equals(PublicKey.default)).toBe(true);
     });
   });
 

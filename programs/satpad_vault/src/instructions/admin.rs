@@ -6,7 +6,7 @@ use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, Tran
 
 use crate::consts::*;
 use crate::errors::VaultError;
-use crate::events::{LpParamsSet, Paused, Recovered, SplitChanged, WalletsChanged};
+use crate::events::{LpParamsSet, Paused, Recovered, SatpadSet, SplitChanged, WalletsChanged};
 use crate::instructions::initialize::{validate_lp_params, validate_split};
 use crate::state::{Coin, Config, Split};
 
@@ -42,6 +42,23 @@ pub fn handle_set_wallets(ctx: Context<AdminConfig>, treasury: Option<Pubkey>, b
         config.rewards_wallet = r;
     }
     emit!(WalletsChanged { treasury: config.treasury, buyback_wallet: config.buyback_wallet, rewards_wallet: config.rewards_wallet });
+    Ok(())
+}
+
+pub fn handle_set_satpad(ctx: Context<AdminConfig>, satpad_mint: Pubkey, satpad_pool: Pubkey, satpad_lp_mint: Pubkey) -> Result<()> {
+    let config = &mut ctx.accounts.config;
+    require!(
+        config.satpad_mint == Pubkey::default() && config.satpad_pool == Pubkey::default() && config.satpad_lp_mint == Pubkey::default(),
+        VaultError::SatpadAlreadySet
+    );
+    for k in [satpad_mint, satpad_pool, satpad_lp_mint] {
+        require!(k != Pubkey::default(), VaultError::InvalidWallet);
+    }
+    require!(satpad_mint != satpad_pool && satpad_pool != satpad_lp_mint && satpad_mint != satpad_lp_mint, VaultError::InvalidWallet);
+    config.satpad_mint = satpad_mint;
+    config.satpad_pool = satpad_pool;
+    config.satpad_lp_mint = satpad_lp_mint;
+    emit!(SatpadSet { satpad_mint, satpad_pool, satpad_lp_mint });
     Ok(())
 }
 

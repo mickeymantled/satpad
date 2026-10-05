@@ -68,4 +68,6 @@ pub enum VaultError {
     WrongRecoveryDestination,
     #[msg("wallet must not be the default pubkey")]
     InvalidWallet,
+    #[msg("$SATPAD mint/pool/LP mint already set; changing them requires a program upgrade (D21)")]
+    SatpadAlreadySet,
 }

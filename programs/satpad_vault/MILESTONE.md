@@ -115,3 +115,7 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 - Root cause of the SBPF v3 failure (V14) — audit scope.
 - Production lookup-table address pinned in config (D14, M5).
 - `set_lp` on mainnet goes through a Squads proposal (`vault-set-lp.ts --print-ix`); not exercised against a real Squads vault yet (M10).
+
+## Addendum 2026-10-05 (M6 task 3, D21)
+- `set_satpad(satpad_mint, satpad_pool, satpad_lp_mint)`: admin-only (`AdminConfig`), write-once (refuses when any field is already set), rejects default/duplicate keys, emits `SatpadSet`. Tests: `tests/vault/admin.test.ts` "set_satpad". Changing the pool afterwards needs an upgrade by the upgrade authority — intended.
+- Build note: cargo-build-sbf prints a frame-size estimate warning for `Settle::try_accounts` (AUDIT_SCOPE item 7); all 68 tests pass.

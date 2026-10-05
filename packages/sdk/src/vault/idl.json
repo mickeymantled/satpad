@@ -1692,6 +1692,62 @@
       ]
     },
     {
+      "name": "set_satpad",
+      "docs": [
+        "Records the $SATPAD mint, its PumpSwap pool and LP mint once bootstrapped (DECISIONS D21). Admin-only and",
+        "write-once: refuses when any of the three is already set; changing them afterwards requires an upgrade."
+      ],
+      "discriminator": [
+        146,
+        130,
+        255,
+        219,
+        250,
+        167,
+        217,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "satpad_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "satpad_pool",
+          "type": "pubkey"
+        },
+        {
+          "name": "satpad_lp_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "set_split",
       "docs": [
         "Changes the split within the program bounds. Applies to every later `settle`."
@@ -2325,6 +2381,19 @@
       ]
     },
     {
+      "name": "SatpadSet",
+      "discriminator": [
+        186,
+        50,
+        41,
+        114,
+        68,
+        136,
+        251,
+        215
+      ]
+    },
+    {
       "name": "Settled",
       "discriminator": [
         232,
@@ -2529,6 +2598,11 @@
       "code": 6032,
       "name": "InvalidWallet",
       "msg": "wallet must not be the default pubkey"
+    },
+    {
+      "code": 6033,
+      "name": "SatpadAlreadySet",
+      "msg": "$SATPAD mint/pool/LP mint already set; changing them requires a program upgrade (D21)"
     }
   ],
   "types": [
@@ -3135,6 +3209,29 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SatpadSet",
+      "docs": [
+        "`set_satpad` (D21): the $SATPAD mint, PumpSwap pool and LP mint were recorded, once."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "satpad_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "satpad_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "satpad_lp_mint",
+            "type": "pubkey"
           }
         ]
       }
