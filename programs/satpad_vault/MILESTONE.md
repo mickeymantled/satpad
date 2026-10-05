@@ -119,3 +119,6 @@ cargo test -p satpad_vault --features mainnet    # must FAIL until the Squads re
 ## Addendum 2026-10-05 (M6 task 3, D21)
 - `set_satpad(satpad_mint, satpad_pool, satpad_lp_mint)`: admin-only (`AdminConfig`), write-once (refuses when any field is already set), rejects default/duplicate keys, emits `SatpadSet`. Tests: `tests/vault/admin.test.ts` "set_satpad". Changing the pool afterwards needs an upgrade by the upgrade authority — intended.
 - Build note: cargo-build-sbf prints a frame-size estimate warning for `Settle::try_accounts` (AUDIT_SCOPE item 7); all 68 tests pass.
+
+## Addendum 2026-10-05 — Settle frame refactor (AUDIT_SCOPE 7 / D15 root cause)
+- `Settle`: `coin_fee_ata`, `buyback_ata`, `treasury_ata` checked by `token::mint` + `token::authority` (owner) instead of `associated_token` derivations; token/mint/`Config`/`Coin` accounts boxed. Linker frame estimate 4,800 → no warning. Builds: v2 497,024 bytes, v3 469,256 bytes. LiteSVM 68/68 and `pnpm fork:m2` DoD met on **both** v2 and v3 binaries. Deployable arch stays v2 (D15).

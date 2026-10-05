@@ -9,9 +9,9 @@ export PATH="${SOLANA_BIN:-$HOME/.local/share/solana/install/active_release/bin}
 ARCH="${SBPF_ARCH:-v2}"
 TOOLS="${PLATFORM_TOOLS:-v1.57}"   # Anchor 1.2 default; pinned (DECISIONS D15). cargo-build-sbf 4.1.0 alone would pick v1.54.
 anchor build "$@"
-if [[ "$ARCH" != "v3" ]]; then
-  cargo build-sbf --tools-version "$TOOLS" --arch "$ARCH" --manifest-path programs/satpad_vault/Cargo.toml
-fi
+# `anchor build` alone now emits v2 with these pins; always rebuild the .so for the requested arch explicitly.
+touch programs/satpad_vault/src/lib.rs
+cargo build-sbf --tools-version "$TOOLS" --arch "$ARCH" --manifest-path programs/satpad_vault/Cargo.toml
 # The SDK ships the IDL so consumers never need target/ (gitignored).
 cp target/idl/satpad_vault.json packages/sdk/src/vault/idl.json
 python3 - <<'PY'

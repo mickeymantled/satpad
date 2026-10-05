@@ -9,53 +9,45 @@ use crate::state::{Coin, Config, PayeeMode, Split};
 #[derive(Accounts)]
 pub struct Settle<'info> {
     #[account(seeds = [SEED_CONFIG], bump = config.bump)]
-    pub config: Account<'info, Config>,
+    pub config: Box<Account<'info, Config>>, // boxed: keeps try_accounts under the 4 KiB frame (AUDIT_SCOPE 7)
 
     /// CHECK: only used as a seed; `coin` ties it to the registration.
     pub mint: UncheckedAccount<'info>,
 
     #[account(seeds = [SEED_COIN, mint.key().as_ref()], bump = coin.bump, has_one = mint)]
-    pub coin: Account<'info, Coin>,
+    pub coin: Box<Account<'info, Coin>>,
 
     /// CHECK: PDA authority over `coin_fee_ata`; signs the transfers out.
     #[account(seeds = [SEED_COIN_FEE, mint.key().as_ref()], bump = coin.coin_fee_bump)]
     pub coin_fee: UncheckedAccount<'info>,
 
-    /// Where pump.fun's collect paid the creator fee.
-    #[account(
-        mut,
-        associated_token::mint = quote_mint, associated_token::authority = coin_fee,
-        associated_token::token_program = quote_token_program,
-    )]
-    pub coin_fee_ata: InterfaceAccount<'info, TokenAccount>,
+    /// Where pump.fun's collect paid the creator fee: a quote token account owned by the CoinFee PDA (its ATA in
+    /// practice). Checked by mint + owner instead of deriving the ATA: the `associated_token` constraints on four
+    /// accounts blew `try_accounts` past the 4 KiB frame estimate (AUDIT_SCOPE 7) and sit where the SBPF v3 corruption
+    /// appeared (D15). Any CoinFee-owned account is safe: only this program can move funds out of it.
+    #[account(mut, token::mint = quote_mint, token::authority = coin_fee, token::token_program = quote_token_program)]
+    pub coin_fee_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, seeds = [SEED_LP_POT], bump = config.lp_pot_bump)]
-    pub lp_pot: InterfaceAccount<'info, TokenAccount>,
+    pub lp_pot: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// `ATA(Config.buyback_wallet, quote)`. Must already exist; the vault never pays rent for a wallet's ATA.
-    #[account(
-        mut,
-        associated_token::mint = quote_mint, associated_token::authority = config.buyback_wallet,
-        associated_token::token_program = quote_token_program,
-    )]
-    pub buyback_ata: InterfaceAccount<'info, TokenAccount>,
+    /// A quote token account owned by `Config.buyback_wallet` (its ATA in practice). Must already exist; the vault never
+    /// pays rent for a wallet's token account. Owner + mint checks: funds can only reach the buyback wallet.
+    #[account(mut, token::mint = quote_mint, token::authority = config.buyback_wallet, token::token_program = quote_token_program)]
+    pub buyback_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// `ATA(Config.treasury, quote)`.
-    #[account(
-        mut,
-        associated_token::mint = quote_mint, associated_token::authority = config.treasury,
-        associated_token::token_program = quote_token_program,
-    )]
-    pub treasury_ata: InterfaceAccount<'info, TokenAccount>,
+    /// A quote token account owned by `Config.treasury` (its ATA in practice).
+    #[account(mut, token::mint = quote_mint, token::authority = config.treasury, token::token_program = quote_token_program)]
+    pub treasury_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, seeds = [SEED_PAYEE_POT, mint.key().as_ref()], bump = coin.payee_pot_bump)]
-    pub payee_pot: InterfaceAccount<'info, TokenAccount>,
+    pub payee_pot: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut, seeds = [SEED_REWARDS_POT, mint.key().as_ref()], bump = coin.rewards_pot_bump)]
-    pub rewards_pot: InterfaceAccount<'info, TokenAccount>,
+    pub rewards_pot: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(address = config.quote_mint @ VaultError::WrongQuoteMint)]
-    pub quote_mint: InterfaceAccount<'info, Mint>,
+    pub quote_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub quote_token_program: Interface<'info, TokenInterface>,
 }

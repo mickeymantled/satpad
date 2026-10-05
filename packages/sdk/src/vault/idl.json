@@ -1946,62 +1946,12 @@
         {
           "name": "coin_fee_ata",
           "docs": [
-            "Where pump.fun's collect paid the creator fee."
+            "Where pump.fun's collect paid the creator fee: a quote token account owned by the CoinFee PDA (its ATA in",
+            "practice). Checked by mint + owner instead of deriving the ATA: the `associated_token` constraints on four",
+            "accounts blew `try_accounts` past the 4 KiB frame estimate (AUDIT_SCOPE 7) and sit where the SBPF v3 corruption",
+            "appeared (D15). Any CoinFee-owned account is safe: only this program can move funds out of it."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "coin_fee"
-              },
-              {
-                "kind": "account",
-                "path": "quote_token_program"
-              },
-              {
-                "kind": "account",
-                "path": "quote_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "lp_pot",
@@ -2025,124 +1975,17 @@
         {
           "name": "buyback_ata",
           "docs": [
-            "`ATA(Config.buyback_wallet, quote)`. Must already exist; the vault never pays rent for a wallet's ATA."
+            "A quote token account owned by `Config.buyback_wallet` (its ATA in practice). Must already exist; the vault never",
+            "pays rent for a wallet's token account. Owner + mint checks: funds can only reach the buyback wallet."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "config.buyback_wallet",
-                "account": "Config"
-              },
-              {
-                "kind": "account",
-                "path": "quote_token_program"
-              },
-              {
-                "kind": "account",
-                "path": "quote_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "treasury_ata",
           "docs": [
-            "`ATA(Config.treasury, quote)`."
+            "A quote token account owned by `Config.treasury` (its ATA in practice)."
           ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "config.treasury",
-                "account": "Config"
-              },
-              {
-                "kind": "account",
-                "path": "quote_token_program"
-              },
-              {
-                "kind": "account",
-                "path": "quote_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "payee_pot",
