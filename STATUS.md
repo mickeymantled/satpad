@@ -68,7 +68,7 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 
 **Needs human before task 1:** none (Postgres and Drizzle are named in SPEC). Telegram alerts need a bot token only when deployed.
 
-## Milestone 6 — Reserve — closed 2026-10-05 (pending review; human said "go" 2026-10-04; swap-sdk dep approved; set_satpad per D21; D22 proposed)
+## Milestone 6 — Reserve — closed 2026-10-05 (approved by human 2026-10-05; human said "go" 2026-10-04; swap-sdk dep approved; set_satpad per D21; D22 proposed)
 
 **Definition of done (SPEC, per D1):** $SATPAD on the fork with a graduated PumpSwap pool; LP loop with burn and buyback loop running; LP mint supply is net zero after ten runs.
 

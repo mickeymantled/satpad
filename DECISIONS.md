@@ -110,5 +110,5 @@ Append-only log of deviations from SPEC.md and proposals. Each entry: date, mile
 
 ## D22 — 2026-10-05 — M6 — The buyback wallet is a keeper hot key
 **Finding:** SPEC's buyback loop "swaps the buyback wallet's BTC balance for $SATPAD on the pool and burns it", but the keeper's key table lists three hot keys (keeper, LP, rewards). The swap must be signed by the wallet that owns the BTC, so the keeper holds the buyback wallet's key as a fourth hot key (`BUYBACK_WALLET_KEYPAIR`). Blast radius: a stolen key can at most buy and burn (or, with a modified keeper, keep) one interval's worth of settled buyback share — `settle` keeps sending the 25% share there, and the admin can repoint `buyback_wallet` via `set_wallets`.
-**Decision:** proposed. Alternative for later: a vault-owned `BuybackPot` plus a `buyback` instruction that CPIs the PumpSwap buy and burns in-program, so no hot key holds BTC.
-**Status:** proposed; implemented as a keeper hot key in M6 task 5.
+**Decision (human, 2026-10-05):** approved — the buyback wallet stays a keeper hot key, with mitigations: the loop keeps the wallet near zero (runs every 300 s and spends the whole balance), the keeper alerts when the wallet balance exceeds one hour of expected inflow (the settled buyback share of the last hour, from the ledger), and an in-program buyback (vault-owned `BuybackPot` + a `buyback` instruction that CPIs the PumpSwap buy and burns) is recorded as a v2 candidate in `docs/AUDIT_SCOPE.md`.
+**Status:** approved 2026-10-05; alert implemented (`buybackTick`, `PgLedger.buybackInflow`).

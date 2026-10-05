@@ -28,7 +28,8 @@ async function main(): Promise<void> {
   const { db, close } = connect(cfg.databaseUrl);
   const chain = new RpcChainReader(conn);
   const fees = cfg.priorityFeeMode === "live" ? new LiveFeeProvider(conn as never, { min: cfg.priorityFeeMinMicroLamports, max: cfg.priorityFeeMaxMicroLamports, log: (m, f) => log.warn(m, f) }) : new FixedFeeProvider(cfg.fixedPriorityFeeMicroLamports);
-  const sender = new Sender(conn, fees, new PgLedger(db), { computeUnitLimit: cfg.computeUnitLimit, maxAttempts: cfg.maxSendAttempts, log });
+  const store = new PgLedger(db);
+  const sender = new Sender(conn, fees, store, { computeUnitLimit: cfg.computeUnitLimit, maxAttempts: cfg.maxSendAttempts, log });
   const alerter = cfg.telegramBotToken && cfg.telegramChatId ? new TelegramAlerter(cfg.telegramBotToken, cfg.telegramChatId) : noopAlerter;
 
   const loops: LoopDef[] = [{
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
     loops.push({
       name: "buyback", intervalMs: cfg.buybackIntervalMs,
       run: async () => {
-        const r = await buybackTick({ chain, sender, buybackWallet, minSats: cfg.buybackMinSats, slippagePct: cfg.buybackSlippagePct, swapState: (pool, user) => ammSwapState(conn, pool, user), log }, await chain.vaultConfig());
+        const r = await buybackTick({ chain, sender, buybackWallet, minSats: cfg.buybackMinSats, slippagePct: cfg.buybackSlippagePct, swapState: (pool, user) => ammSwapState(conn, pool, user), log, inflowLastHour: () => store.buybackInflow(1), alerter }, await chain.vaultConfig());
         return { ...(r.skipped && { skipped: r.skipped }), ...(r.sats !== undefined && { sats: r.sats.toString(), tokens: r.tokens?.toString(), signature: r.signature }) };
       },
     });

@@ -19,5 +19,7 @@ Living document for the M10 audit engagement. Everything the auditors must look 
 
 7. **Stack frame estimate on `Settle::try_accounts`** (observed 2026-10-05, platform-tools v1.57, SBPF v2): `cargo-build-sbf` reports "overflows the maximum allowed frame space … offset 704 bytes greater than the maximum of 4096; estimated frame 4800 bytes". The instruction is unchanged since M2 and every `settle` test (LiteSVM) and fork settle (M3 soak) passes, so it is most likely Anchor's conservative estimate for a large `#[derive(Accounts)]` struct, but it must be confirmed (box the largest accounts in `Settle` if real). Not yet established whether earlier builds printed it; CI's container output does not show linker diagnostics.
 
+8. **Buyback wallet is a keeper hot key (D22, approved).** Mitigations: the loop spends the whole balance every 300 s; alert when the balance exceeds the last hour's settled buyback share. **v2 candidate:** a vault-owned `BuybackPot` and an in-program `buyback` instruction (CPI PumpSwap buy + burn) so no hot key holds BTC.
+
 ## Out of scope
 pump.fun / PumpSwap programs (external, unmodified), NEAR Intents bridge (client-side only), keeper/indexer/web services (separate review).

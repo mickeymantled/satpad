@@ -1,7 +1,7 @@
 // Ledger writes around every transaction (SPEC "Keeper service → Rules"): a row exists with status `built` before
 // anything is sent, is marked `sent` with the signature, then `confirmed` or `failed`. The store is an interface so
 // the retry logic is unit-tested with an in-memory implementation and the keeper uses Postgres.
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { ledger, type Db } from "@satpad/db";
 
 export type LedgerType = (typeof ledger.$inferInsert)["type"];
@@ -16,6 +16,12 @@ export interface LedgerStore {
 
 export class PgLedger implements LedgerStore {
   constructor(private readonly db: Db) {}
+  /** Sum of the buyback share of confirmed settles in the last `hours` (D22 idle-balance alert). */
+  async buybackInflow(hours = 1): Promise<bigint> {
+    const [r] = await this.db.select({ v: sql<string>`coalesce(sum((${ledger.amounts}->>'buyback')::numeric), 0)` }).from(ledger)
+      .where(sql`${ledger.type} = 'settle' and ${ledger.status} = 'confirmed' and ${ledger.confirmedAt} > now() - make_interval(hours => ${hours})`);
+    return BigInt(r?.v ?? "0");
+  }
   async begin(e: LedgerEntry): Promise<bigint> {
     const [row] = await this.db.insert(ledger).values({ type: e.type, mint: e.mint ?? null, actor: e.actor, amounts: e.amounts, status: "built" }).returning({ id: ledger.id });
     return row!.id;

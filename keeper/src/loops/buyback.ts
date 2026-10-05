@@ -4,6 +4,7 @@
 import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { TOKEN_2022_PROGRAM_ID, createBurnInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, COIN_TOKEN_PROGRAM, ammQuoteTokensForSats, buildAmmBuy, type Config, type SwapSolanaState } from "@satpad/sdk";
+import type { Alerter } from "../alerts";
 import type { ChainReader } from "../chain";
 import type { Logger } from "../log";
 import type { TxSender } from "./settle";
@@ -20,6 +21,9 @@ export interface BuybackDeps {
   buildBuy?: (state: SwapSolanaState, tokensOut: bigint, maxQuoteIn: bigint) => Promise<TransactionInstruction[]>;
   quote?: (state: SwapSolanaState, sats: bigint, slippagePct: number) => { tokens: bigint; maxQuoteIn: bigint };
   log: Logger;
+  /** D22 mitigation: settled buyback share of the last hour (from the ledger); the wallet must never hold more than that. */
+  inflowLastHour?: () => Promise<bigint>;
+  alerter?: Alerter;
 }
 export interface BuybackResult { skipped?: string; sats?: bigint; tokens?: bigint; signature?: string }
 
@@ -29,6 +33,12 @@ export async function buybackTick(deps: BuybackDeps, config: Config): Promise<Bu
   const wallet = deps.buybackWallet.publicKey;
   const wbtcAta = getAssociatedTokenAddressSync(BTC_QUOTE_MINT, wallet, true, BTC_QUOTE_TOKEN_PROGRAM);
   const balance = (await deps.chain.tokenBalance(wbtcAta)) ?? 0n;
+  // D22: the hot wallet should hold at most about one interval of inflow; more than an hour's worth means the loop is not
+  // keeping up (or the key is being used elsewhere) — alert, then still try to spend it down.
+  if (deps.inflowLastHour && deps.alerter) {
+    const inflow = await deps.inflowLastHour();
+    if (balance > inflow && balance > deps.minSats) await deps.alerter.alert("buyback wallet balance above one hour of inflow", `balance ${balance} sats, settled buyback share last hour ${inflow} sats`);
+  }
   if (balance < deps.minSats) return { skipped: `balance ${balance} below BUYBACK_MIN_SATS ${deps.minSats}` };
   const state = await deps.swapState(config.satpadPool, wallet);
   if (!state.pool.baseMint.equals(config.satpadMint)) throw new Error(`pool ${config.satpadPool.toBase58()} base mint is not Config.satpad_mint`);

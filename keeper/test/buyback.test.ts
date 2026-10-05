@@ -55,4 +55,14 @@ describe("buybackTick (SPEC Buyback and burn)", () => {
     const failing = deps(100_000n, { sender: { send: async () => { throw new Error("rpc down"); } } });
     await expect(buybackTick(failing.d, base())).rejects.toThrow(/rpc down/);
   });
+  it("D22: alerts when the hot wallet holds more than the last hour's settled buyback share, then still spends it", async () => {
+    const alerts: string[] = [];
+    const { d, sent } = deps(100_000n, { inflowLastHour: async () => 40_000n, alerter: { alert: async (t) => { alerts.push(t); } } });
+    await buybackTick(d, base());
+    expect(alerts).toEqual(["buyback wallet balance above one hour of inflow"]);
+    expect(sent).toHaveLength(1);
+    const quiet = deps(100_000n, { inflowLastHour: async () => 500_000n, alerter: { alert: async (t) => { alerts.push(t); } } });
+    await buybackTick(quiet.d, base());
+    expect(alerts).toHaveLength(1);
+  });
 });
