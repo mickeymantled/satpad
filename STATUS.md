@@ -100,6 +100,30 @@ Done: task 1 — `c4a4dcf`; task 2 — `e5bbd89`; task 3 — `7d3bf34`; task 4 �
 
 8. Close: `scripts/fork-lp-check.ts` runs the LP loop ten times on the fork (`set_lp` interval 300 s) and asserts LP mint supply net zero and reserves grown — the DoD; `keeper/MILESTONE.md` + `packages/sdk/MILESTONE.md` addenda.
 
+## Milestone 7 — Holder rewards (plan draft 2026-10-05, awaiting human go)
+
+**Definition of done (SPEC, per D1):** the 50-holder test pays out correctly on the fork — snapshot, hash, `release_rewards`, batched payouts, publication.
+
+**Verification before code:** V20 (new) — Pyth SOL/USD feed account (rent deduction converts ~0.002 SOL to sats at market); V21 (new) — Token-2022 `getProgramAccounts` filters by mint for the snapshot sweep (already used by the indexer; confirm the data slice for 2022 accounts with extensions).
+
+**Dependencies needing approval:** object storage for snapshots (SPEC says "object storage" without naming one). Proposal: a `SnapshotStore` interface with a Postgres-backed implementation (served at `GET /rewards/:mint/:run/snapshot.json`, the fork and fallback path, same pattern as D18) and an S3-compatible implementation (`@aws-sdk/client-s3`, works with Railway buckets and Cloudflare R2) selected by env. The S3 client is a new dependency — please approve or name the store.
+
+**Design notes**
+- Price inputs shared: `PythPriceProvider` moves from `api/` to `packages/sdk` so the keeper reads BTC/USD (pot ≥ $25) and the coin price (holder ≥ $20: pool reserves after graduation, curve reserves before) the same way the API does.
+- Schedule: for each Holders-mode coin with pot ≥ $25 and last run ≥ 3600 s (cluster time), pick a random minute in the next hour and persist it (`rewards_schedule` table) so restarts keep the unannounced time and never run early.
+- Snapshot (pure, unit-tested on a 50-holder fixture): holders of the mint at a slot via `getProgramAccounts` (Token-2022), cross-checked against the indexer's `holders`; exclude the bonding curve, the pool, Satpad wallets from `Config`, known burn addresses and lockers (list in `consts`); keep wallets ≥ $20; pro-rata shares in sats; holders without a wBTC ATA get one created in their payout tx with rent (SOL at market, V20) deducted from the share to the treasury; shares below 2× rent are skipped and roll over. Snapshot JSON + sha256 stored durably (`rewards_snapshots` + object storage) **before** release.
+- Release: `release_rewards(snapshot_sha256)` by the rewards wallet key (`REWARDS_WALLET_KEYPAIR`), run index = `coin.rewards_run_count`; state machine in Postgres (`snapshotted → released → paying → done`) so a crash after release resumes from the stored share list; payouts in batches of ≤ 20 transfers per tx from the rewards wallet's wBTC ATA, ledger rows `release_rewards` and `rewards_transfer`; Telegram alert on `release_rewards` to an unexpected wallet (SPEC alerts).
+- Indexer/API/web: `rewards_runs` rows (event exists) completed with holders paid / skipped / transfer signatures from the keeper state; `GET /coins/:mint/rewards` gains snapshot URL + share list; coin page rewards tab shows runs with Solscan links; `/ledger` already lists keeper rows.
+
+**Tasks (one commit each, tests with every task):**
+1. Shared price provider in `packages/sdk` (+ SOL/USD, V20); keeper config/keys for the rewards wallet; `rewards_schedule`/`rewards_snapshots`/run-state migrations.
+2. Snapshot + shares (pure module, 50-holder fixture tests incl. exclusions, $20 floor, rent deduction, roll-over).
+3. Snapshot store (Postgres impl + S3 impl behind env; API serves the Postgres one) — pending approval.
+4. Rewards loop: candidate check, random-minute schedule, snapshot → store → `release_rewards`; scenario tests with scripted chain/sender.
+5. Payout batches (≤ 20 per tx, ATA creation + rent deduction, resume after crash); tests.
+6. Indexer/API/web for runs and share lists; `fork-api-check` covers rewards rows.
+7. `scripts/fork-rewards-check.ts`: Holders coin with 50 holders (varied balances, some below $20, some without ATA), pot filled via trades + settle, loop run with the schedule overridden, assertions per SPEC = the DoD; `keeper/MILESTONE.md`.
+
 ## M3 close-out tasks (after the soak ends and the fork can restart — human queue 2026-10-03)
 1. Commit the soak summary the script writes into STATUS.md / keeper/MILESTONE.md; include the indexer's `rpc rate` footprint and the rolling sidecar totals; close M3.
 2. ~~done 2026-10-05~~ `scripts/local-fork.sh`: `--clone` the Pyth BTC/USD feed account `4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo` (+ receiver program `rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ` as upgradeable) so `PRICE_SOURCE=pyth` runs live on the fork (price frozen at clone time; staleness guard needs `PRICE_MAX_AGE_SECS` override on the fork).
