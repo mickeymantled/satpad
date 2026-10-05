@@ -5,13 +5,13 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { OnlinePumpSdk, PUMP_SDK, bondingCurvePda } from "@pump-fun/pump-sdk";
 import { COIN_TOKEN_PROGRAM, buildBuyV2, buildSellV2, coinFeePda, defaultFeeRecipients, quoteSatsForSell, quoteSatsForTokens, quoteTokensForSats, sats } from "@satpad/sdk";
-import { RPC, send } from "./lib/fork";
+import { RPC, send, KEYS_DIR } from "./lib/fork";
 
 const arg = (n: string, d: number) => { const i = process.argv.indexOf(`--${n}`); return i >= 0 ? Number(process.argv[i + 1]) : d; };
 const RATE = arg("rate-ms", 2000), DURATION = arg("duration-s", 0), BUY_SATS = BigInt(arg("buy-sats", 20_000));
 
 async function main() {
-  const seed = JSON.parse(readFileSync("scripts/fork-keys/seed.json", "utf8")) as { wallets: Record<string, { secret: number[] }>; coins: { mint: string; symbol: string }[] };
+  const seed = JSON.parse(readFileSync(`${KEYS_DIR}/seed.json`, "utf8")) as { wallets: Record<string, { secret: number[] }>; coins: { mint: string; symbol: string }[] };
   const trader = Keypair.fromSecretKey(Uint8Array.from(seed.wallets["trader"]!.secret));
   const conn = new Connection(RPC, "confirmed");
   const online = new OnlinePumpSdk(conn);

@@ -4,11 +4,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { bondingCurvePda } from "@pump-fun/pump-sdk";
 import { SATPAD_VAULT_PROGRAM_ID } from "@satpad/sdk";
-import { RPC } from "./lib/fork";
+import { RPC, KEYS_DIR } from "./lib/fork";
 
 async function main() {
   const conn = new Connection(RPC, "confirmed");
-  const seed = JSON.parse(readFileSync("scripts/fork-keys/seed.json", "utf8")) as { coins: { mint: string; signature: string }[] };
+  const seed = JSON.parse(readFileSync(`${KEYS_DIR}/seed.json`, "utf8")) as { coins: { mint: string; signature: string }[] };
   mkdirSync("indexer/test/fixtures", { recursive: true });
   const save = async (name: string, sig: string) => {
     const tx = await conn.getTransaction(sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });

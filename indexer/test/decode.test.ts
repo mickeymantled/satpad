@@ -37,6 +37,19 @@ describe("decodeTx on recorded fork transactions", () => {
     expect(d.trades[0]!.btcAmount).toBeGreaterThan(0n);
     expect(d.holders.some((h) => h.mint === "5RJcqcQxxbszWfAsjhezgEeWN9c5GvkWeRbo9guDsYLe" && h.balance === 2066557947085n)).toBe(true);
   });
+  it("buyout_complete → the final curve buy plus CompleteEvent (pool unknown yet)", () => {
+    const d = decodeTx(fixture("buyout_complete"));
+    expect(d.trades).toHaveLength(1);
+    expect(d.trades[0]).toMatchObject({ mint: "ACBjsAS124McHP2eLvWWTWqP5GNqKkfAFnpTEpVKCErF", side: "buy", tokenAmount: 793090000000000n });
+    expect(d.completes).toHaveLength(1);
+    expect(d.completes[0]).toMatchObject({ mint: "ACBjsAS124McHP2eLvWWTWqP5GNqKkfAFnpTEpVKCErF", pool: null });
+  });
+  it("migrate_v2 → CompletePumpAmmMigrationEvent with the PumpSwap pool (M6 task 1, V17)", () => {
+    const d = decodeTx(fixture("migrate_v2"));
+    expect(d.trades).toHaveLength(0);
+    expect(d.completes).toHaveLength(1);
+    expect(d.completes[0]).toMatchObject({ mint: "ACBjsAS124McHP2eLvWWTWqP5GNqKkfAFnpTEpVKCErF", pool: "5R71nH1nWzwm685kTgQk3Wvr9PmJGMZe9p9iK1knXCBy" });
+  });
   it("sell_v2 → one curve sell", () => {
     const d = decodeTx(fixture("sell_v2"));
     expect(d.trades).toHaveLength(1);

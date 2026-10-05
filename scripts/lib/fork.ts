@@ -9,10 +9,12 @@ import { OnlinePumpSdk } from "@pump-fun/pump-sdk";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, buildBuyV2, buildCreateV2, buildDeclareCoin, buildV0Transaction, coinFeePda, createLookupTable, defaultFeeRecipients, staticAccounts, type FeeRecipients, type PayeeChoice } from "@satpad/sdk";
 
 export const RPC = process.env["LOCAL_RPC_URL"] ?? "http://127.0.0.1:8899";
+/** Where seed.json / keeper.json / wbtc-authority.json live; a second stack (M6 on :8999) uses its own dir so the soak's files are never touched. */
+export const KEYS_DIR = process.env["FORK_KEYS_DIR"] ?? "scripts/fork-keys";
 export const ata = (owner: PublicKey) => getAssociatedTokenAddressSync(BTC_QUOTE_MINT, owner, true, BTC_QUOTE_TOKEN_PROGRAM);
 
 export function wbtcAuthority(): Keypair {
-  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path.join(ROOT, "scripts/fork-keys/wbtc-authority.json"), "utf8"))));
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path.join(ROOT, KEYS_DIR, "wbtc-authority.json"), "utf8"))));
 }
 
 export async function fundSol(conn: Connection, keys: PublicKey[], sol = 10): Promise<void> {

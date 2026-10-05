@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token";
 import { BTC_QUOTE_MINT, BTC_QUOTE_TOKEN_PROGRAM, DEFAULT_SPLIT, buildInitialize, configPda, decodeConfig, type PayeeChoice } from "@satpad/sdk";
-import { RPC, ata, fundSol, fundWbtc, launchCoin, launchContext, send } from "./lib/fork";
+import { RPC, ata, fundSol, fundWbtc, launchCoin, launchContext, send, KEYS_DIR } from "./lib/fork";
 
 const N = Number(process.argv[process.argv.indexOf("--coins") + 1] || 10);
 
@@ -38,11 +38,11 @@ async function main() {
     coins.push({ mint: mint.toBase58(), symbol: `SEED${i}`, payee: payee.kind, launcher: launcher.publicKey.toBase58(), signature });
     console.log(`launched ${coins[i]!.symbol} ${mint.toBase58()} payee=${payee.kind}`);
   }
-  mkdirSync("scripts/fork-keys", { recursive: true });
+  mkdirSync(KEYS_DIR, { recursive: true });
   const dump = (k: Keypair) => Array.from(k.secretKey);
-  writeFileSync("scripts/fork-keys/seed.json", JSON.stringify({ rpc: RPC, lookupTable: ctx.table.key.toBase58(), wallets: Object.fromEntries(Object.entries(keys).map(([n, k]) => [n, { pubkey: k.publicKey.toBase58(), secret: dump(k) }])), launchers: launchers.map(dump), coins, config: { treasury: config.treasury.toBase58(), buyback: config.buybackWallet.toBase58() } }, null, 2));
-  writeFileSync("scripts/fork-keys/keeper.json", JSON.stringify(dump(keys.keeper)));
-  console.log(`seeded ${N} coins; wallets in scripts/fork-keys/seed.json; keeper keypair scripts/fork-keys/keeper.json`);
+  writeFileSync(`${KEYS_DIR}/seed.json`, JSON.stringify({ rpc: RPC, lookupTable: ctx.table.key.toBase58(), wallets: Object.fromEntries(Object.entries(keys).map(([n, k]) => [n, { pubkey: k.publicKey.toBase58(), secret: dump(k) }])), launchers: launchers.map(dump), coins, config: { treasury: config.treasury.toBase58(), buyback: config.buybackWallet.toBase58() } }, null, 2));
+  writeFileSync(`${KEYS_DIR}/keeper.json`, JSON.stringify(dump(keys.keeper)));
+  console.log(`seeded ${N} coins; wallets in ${KEYS_DIR}/seed.json; keeper keypair ${KEYS_DIR}/keeper.json`);
   void PublicKey;
 }
 main().catch((e) => { console.error(e); process.exit(1); });

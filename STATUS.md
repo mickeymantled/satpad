@@ -96,6 +96,8 @@ Done: task 1 — `dd67aa4` · task 2 — `ccf0a1c`, `ce04da4` · task 3 — `254
 5. Keeper: AMM collect in the settle loop for graduated coins; buyback-and-burn loop (300 s) with ledger + alerts; scenario tests.
 6. Keeper: LP deposit loop (one transaction, lookup table if needed), LP-supply guard + Telegram alert, ledger rows; tests with a scripted chain.
 7. Indexer + API + web: pool trades, lp/buyback ledger types, stats; coin page trading on PumpSwap after graduation; `fork-api-check` covers pool coins.
+Done: task 1 — (this commit): `scripts/fork-graduate.ts` (dry-run prints the V5 cost; live: buy-out → `complete` → `migrate_v2` → pool + LP mint check), `local-fork.sh` clones PumpSwap `global_config`, `FORK_KEYS_DIR` so the M6 stack (`:8999`, `scripts/fork-keys-m6`, db `satpad_m6`) never touches the soak's files; indexer `--once` on the M6 db flips the coin to `block` with the pool; fixtures + 2 decoder tests; V5 + V17 recorded.
+
 8. Close: `scripts/fork-lp-check.ts` runs the LP loop ten times on the fork (`set_lp` interval 300 s) and asserts LP mint supply net zero and reserves grown — the DoD; `keeper/MILESTONE.md` + `packages/sdk/MILESTONE.md` addenda.
 
 ## M3 close-out tasks (after the soak ends and the fork can restart — human queue 2026-10-03)

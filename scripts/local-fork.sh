@@ -28,6 +28,8 @@ export PATH="${SOLANA_BIN:-$HOME/.local/share/solana/install/active_release/bin}
 URL="${FORK_RPC_URL:-https://api.mainnet-beta.solana.com}"
 DIR="${LEDGER_DIR:-.fork-ledger}"
 RPC_PORT="${RPC_PORT:-8899}"
+# A second instance needs its own faucet/gossip/dynamic ports too (derived from RPC_PORT; defaults for 8899 are the validator's own).
+PORTS=(); if [[ "$RPC_PORT" != "8899" ]]; then PORTS=(--faucet-port $((RPC_PORT + 1001)) --gossip-port $((RPC_PORT + 2)) --dynamic-port-range "$((RPC_PORT + 100))-$((RPC_PORT + 200))"); fi
 MINT_JSON="$DIR/wbtc-mint.json"
 
 # satpad_vault: loaded as an upgradeable program with the dev upgrade-authority key so set_lp can be exercised.
@@ -41,7 +43,7 @@ UPGRADE_AUTHORITY="${VAULT_UPGRADE_AUTHORITY:-U3CGV1FvYBnHDf9CNmEwEMW97CXE1BWo1p
 REPRO=()
 [[ -f target/deploy/sbpf_repro.so ]] && REPRO=(--upgradeable-program 7JLG4yR2ohNn21SSXf7eiPCnWfqiMtMPoUaDQuTDphuW target/deploy/sbpf_repro.so "$UPGRADE_AUTHORITY")
 
-CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port "$RPC_PORT"
+CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-port "$RPC_PORT" "${PORTS[@]}"
   --upgradeable-program "$VAULT_ID" "$VAULT_SO" "$UPGRADE_AUTHORITY"  # satpad_vault (this repo)
   "${REPRO[@]}"
   # --- programs (program + programdata) ---
@@ -65,6 +67,8 @@ CMD=(solana-test-validator --reset --ledger "$DIR/ledger" --url "$URL" --rpc-por
   # --- Pyth BTC/USD (VERIFIED V7; M3 close-out) so the API's PRICE_SOURCE=pyth reads a real feed; price frozen at clone time ---
   --clone-upgradeable-program rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ  # pyth-solana-receiver (owner of the feed account)
   --clone 4cSM2e6rvbGQUFiJbqytoVMi5GgghSMr8LwVrT9VPSPo  # sponsored BTC/USD price update account, shard 0
+  # --- PumpSwap (M6): global_config read by pump's migrate_v2 and every AMM instruction ---
+  --clone ADyA8hdefvWN2dbGGWFotbzWxrAvLW83WG6QCVXvJKqw  # pump_amm global_config (seed "global_config")
 )
 
 if [[ $DRY -eq 1 ]]; then

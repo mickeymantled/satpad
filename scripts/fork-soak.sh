@@ -16,7 +16,7 @@ scripts/local-fork.sh --detach || exit 1
 pnpm -s db:migrate && docker exec satpad-postgres psql -U satpad -d satpad -q -c "TRUNCATE ledger, coins, keeper_health"
 pnpm -s fork:seed --coins "$COINS" | grep -v bigint || exit 1
 START_SLOT=$(solana -u http://127.0.0.1:8899 slot)
-export KEEPER_KEYPAIR="$PWD/scripts/fork-keys/keeper.json"
+export KEEPER_KEYPAIR="$PWD/${FORK_KEYS_DIR:-scripts/fork-keys}/keeper.json"
 
 pnpm -s fork:trade --rate-ms "$RATE_MS" --duration-s "$DURATION_S" > .fork-ledger/soak-trader.log 2>&1 &
 TRADER=$!
