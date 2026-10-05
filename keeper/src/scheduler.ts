@@ -42,7 +42,7 @@ export class Scheduler {
       this.opts.log.info("tick ok", { loop: name, result });
     } catch (e) {
       s.consecutiveFailures++;
-      s.lastError = (e as Error).message;
+      s.lastError = ((e as Error).message || (e as Error).name || String(e));
       this.opts.log.error("tick failed", { loop: name, consecutiveFailures: s.consecutiveFailures, error: s.lastError });
       if (s.consecutiveFailures === this.alertAfter) {
         await this.opts.alerter.alert(`keeper loop ${name} failing`, `${this.alertAfter} consecutive failures. Last: ${s.lastError}`).catch((ae) => this.opts.log.error("alert failed", { error: (ae as Error).message }));
