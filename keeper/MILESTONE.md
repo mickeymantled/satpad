@@ -69,3 +69,6 @@ pnpm db:migrate && pnpm --filter @satpad/db test
 - `Sender.send(..., { tables })` builds a v0 transaction; `ChainReader.mintSupply`.
 - Evidence (M6 fork): `2qPYg3…` drawn 2,021 sats, swapped 1,020, LP 3,803,878 minted and burned, LP mint supply 0 → 0.
 - Fix found by the continuous M6 run: `RpcChainReader.tokenBalances` unpacked every account with the classic Token program; coin and LP accounts are Token-2022, so once the LP wallet held $SATPAD the LP loop threw `TokenInvalidAccountOwnerError` (empty message — the scheduler now logs the error name). Accounts are unpacked with their real owner program (`chain.test.ts`).
+
+## M6 definition of done (SPEC milestone 6) — MET 2026-10-05
+`pnpm fork:lp-check` on the M6 fork after the keeper ran unattended with settle (60 s), buyback (300 s) and LP (on-chain 300 s interval) loops while a trader fed fees: 10 confirmed `lp_deposit` runs, LP minted = LP burned = 229,567,392 in both the ledger and the indexer's `lp_runs`, **LP mint supply on chain 0**, pool LP counter 47,994,725,345, reserves 182,861,050,528,431 base / 10,333,516 sats, 108,888 sats drawn in total; 2 ticks were refused in simulation (`LpDrawTooSoon`) before the draw gate moved to cluster time — nothing was sent. `fork-api-check` reported 0 problems on the same stack (graduated coins, pool trades, buyback and LP rows).

@@ -51,3 +51,6 @@ Fork signatures are not on any public explorer; re-run `pnpm fork:m1` to reprodu
 - `satpad_vault` instruction builders and account decoders — M2, generated from the Anchor IDL.
 - Dev program id `52Kj3EZg6Cr7jeLd5bmVtVwe7kPqWHsLvR6UoCiZ4H93` is a placeholder; mainnet uses a fresh key.
 - Graduation threshold for a wBTC curve (VERIFIED V5) still open; needed by M4.
+
+## Addendum 2026-10-05 (M6)
+- `src/amm.ts`: PumpSwap wrappers over `@pump-fun/pump-swap-sdk@1.20.0` (pool PDA, Token-2022 LP mint, swap/liquidity state, bigint quote math, buy/sell/deposit/collect builders) with unit tests on a captured pool state (`test/fixtures/amm_state.json`, `scripts/capture-amm-state.ts`). `buildSetSatpad` for D21.
